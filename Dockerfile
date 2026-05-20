@@ -11,5 +11,5 @@ ENV STEP_API_BASE="https://api.stepfun.com/step_plan/v1"
 ENV STEP_TTS_MODEL="stepaudio-2.5-tts"
 ENV PYTHONUNBUFFERED=1
 
-EXPOSE 8000
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+EXPOSE 7860
+CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "7860"]
