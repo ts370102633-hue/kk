@@ -35,7 +35,7 @@ audio{width:100%;margin-top:10px}
 .tab{display:inline-block;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;margin-right:4px}
 .tab.active{background:#0f172a;color:#fff}
 .tab:not(.active){background:#f1f5f9;color:#64748b}
-.hidden{display:none}
+.hidden{display:none !important}
 .loading{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:999}
 .loading-inner{background:#fff;padding:24px 32px;border-radius:16px;font-size:15px;font-weight:600;box-shadow:0 4px 24px rgba(0,0,0,0.1)}
 </style>
@@ -143,7 +143,7 @@ function renderVoices() {
           <button class="btn-del" onclick="deleteVoice('${v.id}')">删除</button>
         </div>
       </div>
-      ${v.sample_audio ? `<audio controls src="data:audio/mpeg;base64,${v.sample_audio}" style="margin-top:10px"></audio>` : ''}
+      ${v.has_sample ? '<div style="color:#065f46;font-size:13px;margin-top:6px">✅ 克隆成功，去文案朗读使用</div>' : ''}
     </div>
   `).join('');
 }
@@ -187,7 +187,7 @@ async function uploadVoice() {
       department: document.getElementById('v-dept').value,
       language: 'ZH',
       step_voice_id: data.step_voice_id,
-      sample_audio: data.sample_audio,
+      has_sample: true,
       created_at: new Date().toISOString(),
     });
     saveVoices(voices);
@@ -227,16 +227,16 @@ async function createTTS() {
     if(!res.ok) throw new Error(await res.text());
     const data = await res.json();
 
-    // 保存任务记录
+    // 保存任务记录（不存音频数据）
     const jobs = getJobs();
     jobs.unshift({
       id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
       title: document.getElementById('s-title').value || '未命名',
       voice_name: voice.name,
-      text: text,
-      audio: data.audio,
+      text: text.slice(0, 50),
       created_at: new Date().toISOString(),
     });
+    if(jobs.length > 20) jobs.pop(); // 最多保留20条
     saveJobs(jobs);
 
     // 直接播放结果
