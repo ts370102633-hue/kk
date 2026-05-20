@@ -155,6 +155,21 @@ function renderVoiceOptions() {
     voices.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join('');
 }
 
+// === 轮询任务状态 ===
+async function pollTask(taskId, maxWait = 120000) {
+  const start = Date.now();
+  while (Date.now() - start < maxWait) {
+    await new Promise(r => setTimeout(r, 2000));
+    const res = await fetch(API + '/api/task/' + taskId);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === 'done') return data;
+      if (data.status === 'error') throw new Error(data.error);
+    }
+  }
+  throw new Error('请求超时，请重试');
+}
+
 // === 上传克隆 ===
 async function uploadVoice() {
   const name = document.getElementById('v-name').value.trim();
@@ -168,16 +183,17 @@ async function uploadVoice() {
   fd.append('file', file);
 
   const btn = document.getElementById('v-btn');
-  btn.disabled = true; btn.textContent = '克隆中，请稍候（约30秒）...';
+  btn.disabled = true; btn.textContent = '克隆中，请稍候...';
   showLoading();
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
-    const res = await fetch(API+'/api/clone', {method:'POST', body:fd, signal:controller.signal});
-    clearTimeout(timeout);
+    // 1. 启动任务
+    const res = await fetch(API+'/api/clone', {method:'POST', body:fd});
     if(!res.ok) throw new Error(await res.text());
-    const data = await res.json();
+    const {task_id} = await res.json();
+
+    // 2. 轮询结果
+    const result = await pollTask(task_id);
 
     const voices = getVoices();
     voices.unshift({
@@ -186,16 +202,13 @@ async function uploadVoice() {
       speaker: document.getElementById('v-speaker').value,
       department: document.getElementById('v-dept').value,
       language: 'ZH',
-      step_voice_id: data.step_voice_id,
+      step_voice_id: result.step_voice_id,
       has_sample: true,
       created_at: new Date().toISOString(),
     });
     saveVoices(voices);
     showTab('voices');
-  } catch(e) {
-    const msg = e.name === 'AbortError' ? '请求超时，请稍后重试' : e.message;
-    errEl.textContent=msg; errEl.classList.remove('hidden');
-  }
+  } catch(e) { errEl.textContent=e.message; errEl.classList.remove('hidden'); }
   finally { btn.disabled=false; btn.textContent='开始克隆'; hideLoading(); }
 }
 
@@ -216,18 +229,18 @@ async function createTTS() {
   showLoading();
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
+    // 1. 启动任务
     const res = await fetch(API+'/api/tts', {
       method:'POST', headers:{'content-type':'application/json'},
-      body: JSON.stringify({step_voice_id: voice.step_voice_id, text: text}),
-      signal: controller.signal
+      body: JSON.stringify({step_voice_id: voice.step_voice_id, text: text})
     });
-    clearTimeout(timeout);
     if(!res.ok) throw new Error(await res.text());
-    const data = await res.json();
+    const {task_id} = await res.json();
 
-    // 保存任务记录（不存音频数据）
+    // 2. 轮询结果
+    const result = await pollTask(task_id);
+
+    // 保存任务记录
     const jobs = getJobs();
     jobs.unshift({
       id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
@@ -236,12 +249,12 @@ async function createTTS() {
       text: text.slice(0, 50),
       created_at: new Date().toISOString(),
     });
-    if(jobs.length > 20) jobs.pop(); // 最多保留20条
+    if(jobs.length > 20) jobs.pop();
     saveJobs(jobs);
 
     // 直接播放结果
     const audioEl = document.getElementById('tts-audio');
-    audioEl.src = 'data:audio/mpeg;base64,' + data.audio;
+    audioEl.src = 'data:audio/mpeg;base64,' + result.audio;
     document.getElementById('tts-result').classList.remove('hidden');
     audioEl.play();
   } catch(e) {
