@@ -1,0 +1,35 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/app/main.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxDuration": 120
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/files/(.*)",
+      "dest": "backend/app/main.py"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "backend/app/main.py"
+    },
+    {
+      "src": "/health",
+      "dest": "backend/app/main.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "backend/app/main.py"
+    }
+  ],
+  "env": {
+    "STEP_API_KEY": "3TK66wvoMBlQUYt953nHgtKoNC8SAJyRCIUjzNSz3ZtatHm0fehfODRkhYbYcfsyb",
+    "STEP_API_BASE": "https://api.stepfun.com/step_plan/v1",
+    "STEP_TTS_MODEL": "stepaudio-2.5-tts"
+  }
+}
