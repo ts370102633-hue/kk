@@ -92,11 +92,11 @@ async def create_tts(request: Request):
     body = await request.json()
     step_voice_id = body.get("step_voice_id")
     text = body.get("text", "")
+    instruction = body.get("instruction", "用情绪高昂、积极向上、充满活力的语气")
     if not step_voice_id or not text:
         raise HTTPException(400, "缺少参数")
     task_id = str(uuid.uuid4())
     _tasks[task_id] = {"status": "processing"}
-    instruction = "用情绪高昂、积极向上、充满活力的语气"
     thread = threading.Thread(target=_do_tts, args=(task_id, step_voice_id, text, instruction))
     thread.start()
     return JSONResponse({"task_id": task_id})

@@ -6,7 +6,7 @@
 <title>StepAudio 声音工作室</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#1e293b;padding:24px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#1e293b;padding:24px;max-width:800px;margin:0 auto}
 h1{font-size:24px;font-weight:700;margin-bottom:8px}
 .sub{color:#64748b;font-size:14px;margin-bottom:24px}
 .card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:24px;margin-bottom:16px}
@@ -15,27 +15,30 @@ input,select,textarea{width:100%;padding:10px 14px;border:1px solid #e2e8f0;bord
 textarea{min-height:80px;resize:vertical}
 input[type=file]{padding:16px;border-style:dashed;background:#f8fafc}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.btn{background:#0f172a;color:#fff;border:none;padding:12px 24px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;width:100%}
+.btn{background:#0f172a;color:#fff;border:none;padding:12px 24px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;width:100%;transition:all 0.2s}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn2{background:#0f172a;color:#fff;border:none;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer}
 .btn-del{background:none;border:1px solid #e2e8f0;color:#94a3b8;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;margin-left:8px}
 .btn-del:hover{background:#fef2f2;color:#991b1b;border-color:#fecaca}
 .badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:600}
-.badge-processing{background:#fef3c7;color:#92400e}
 .badge-active{background:#d1fae5;color:#065f46}
+.badge-processing{background:#fef3c7;color:#92400e}
 .badge-failed{background:#fee2e2;color:#991b1b}
-.badge-completed{background:#d1fae5;color:#065f46}
-.badge-queued{background:#e0f2fe;color:#075985}
 .err{background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px;font-size:13px;color:#991b1b;margin-top:8px;white-space:pre-wrap}
 .check{display:flex;align-items:flex-start;gap:8px;margin-bottom:14px;font-size:13px}
 .check input{width:auto;margin:2px 0 0 0}
 audio{width:100%;margin-top:10px}
-.voice-item{border-bottom:1px solid #f1f5f9;padding:14px 0}
-.voice-item:last-child{border:none}
-.tab{display:inline-block;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;margin-right:4px}
+.tab{display:inline-block;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;margin-right:4px;transition:all 0.2s}
 .tab.active{background:#0f172a;color:#fff}
 .tab:not(.active){background:#f1f5f9;color:#64748b}
+.tab:not(.active):hover{background:#e2e8f0}
 .hidden{display:none !important}
+.progress{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin:12px 0}
+.progress-bar{height:100%;background:linear-gradient(90deg,#3b82f6,#8b5cf6);border-radius:3px;transition:width 0.3s;animation:progress-pulse 1.5s ease-in-out infinite}
+@keyframes progress-pulse{0%,100%{opacity:1}50%{opacity:.7}}
+.tag{display:inline-block;padding:4px 12px;border-radius:8px;font-size:12px;cursor:pointer;margin:0 6px 6px 0;border:1px solid #e2e8f0;background:#fff;transition:all 0.2s}
+.tag:hover{border-color:#3b82f6;color:#3b82f6}
+.tag.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
 </style>
 </head>
 <body>
@@ -43,8 +46,10 @@ audio{width:100%;margin-top:10px}
 <div style="display:flex;gap:8px;margin-bottom:20px">
   <div class="tab active" onclick="showTab('voices')">声音库</div>
   <div class="tab" onclick="showTab('speak')">文案朗读</div>
+  <div class="tab" onclick="showTab('history')">任务记录</div>
 </div>
 
+<!-- 声音库 -->
 <div id="tab-voices">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
     <div><h1>声音库</h1><div class="sub">上传录音或视频，克隆声音（数据存在浏览器，不会丢失）</div></div>
@@ -53,6 +58,7 @@ audio{width:100%;margin-top:10px}
   <div id="voice-list"></div>
 </div>
 
+<!-- 上传克隆 -->
 <div id="tab-new" class="hidden">
   <h1>上传录音/视频，克隆声音</h1>
   <div class="sub">建议 5-30 秒清晰人声，安静环境</div>
@@ -69,14 +75,22 @@ audio{width:100%;margin-top:10px}
       <input type="checkbox" id="v-consent">
       <span>我确认该录音已获得本人或公司合法授权</span>
     </div>
+    <div id="v-progress" class="hidden">
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:#64748b;margin-bottom:4px">
+        <span id="v-progress-text">正在上传...</span>
+        <span id="v-progress-pct">0%</span>
+      </div>
+      <div class="progress"><div id="v-progress-bar" class="progress-bar" style="width:0%"></div></div>
+    </div>
     <div id="v-err" class="err hidden"></div>
     <button class="btn" id="v-btn" onclick="uploadVoice()">开始克隆</button>
   </div>
 </div>
 
+<!-- 文案朗读 -->
 <div id="tab-speak" class="hidden">
   <h1>文案朗读</h1>
-  <div class="sub">选择声音，输入文案，生成高质量语音</div>
+  <div class="sub">选择声音，输入文案，调整风格，生成高质量语音</div>
   <div class="card" style="margin-top:16px">
     <label>选择声音 *</label>
     <select id="s-voice"><option value="">请选择...</option></select>
@@ -84,40 +98,100 @@ audio{width:100%;margin-top:10px}
     <input id="s-title" placeholder="例如：产品介绍视频配音">
     <label>文案内容 *</label>
     <textarea id="s-text" placeholder="输入要朗读的文案..."></textarea>
+
+    <label>朗读风格</label>
+    <div id="style-tags" style="margin-bottom:14px">
+      <span class="tag active" data-style="情绪高昂、积极向上、充满活力" onclick="selectStyle(this)">🎯 积极昂扬</span>
+      <span class="tag" data-style="温柔轻柔、亲切自然" onclick="selectStyle(this)">🌸 温柔亲切</span>
+      <span class="tag" data-style="沉着冷静、稳重大气" onclick="selectStyle(this)">🧊 沉着冷静</span>
+      <span class="tag" data-style="激情澎湃、充满感染力" onclick="selectStyle(this)">🔥 激情澎湃</span>
+      <span class="tag" data-style="轻松愉快、幽默风趣" onclick="selectStyle(this)">😄 轻松幽默</span>
+      <span class="tag" data-style="专业严谨、播音腔" onclick="selectStyle(this)">🎙️ 专业播音</span>
+      <span class="tag" data-style="用原声自然语气，不做作" onclick="selectStyle(this)">🎵 纯原声</span>
+    </div>
+    <label>自定义风格描述（可选）</label>
+    <input id="s-custom-style" placeholder="例如：像讲故事一样娓娓道来，带一点神秘感">
+
+    <div id="s-progress" class="hidden">
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:#64748b;margin-bottom:4px">
+        <span id="s-progress-text">正在生成语音...</span>
+        <span id="s-progress-pct">0%</span>
+      </div>
+      <div class="progress"><div id="s-progress-bar" class="progress-bar" style="width:0%"></div></div>
+    </div>
     <div id="s-err" class="err hidden"></div>
     <button class="btn" id="s-btn" onclick="createTTS()">生成语音</button>
   </div>
   <div id="tts-result" class="hidden" style="margin-top:16px">
     <div class="card">
-      <strong>生成结果</strong>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <strong>生成结果</strong>
+        <button class="btn-del" onclick="document.getElementById('tts-result').classList.add('hidden')">关闭</button>
+      </div>
       <audio id="tts-audio" controls style="margin-top:10px"></audio>
     </div>
   </div>
 </div>
 
+<!-- 任务记录 -->
+<div id="tab-history" class="hidden">
+  <h1>任务记录</h1>
+  <div class="sub">历史生成记录（最多保留 30 条）</div>
+  <div id="history-list"></div>
+</div>
+
 <script>
 const API = '';
 
-// === localStorage 持久化 ===
+// === localStorage ===
 function getVoices() { return JSON.parse(localStorage.getItem('voices') || '[]'); }
 function saveVoices(v) { localStorage.setItem('voices', JSON.stringify(v)); }
 function getJobs() { return JSON.parse(localStorage.getItem('jobs') || '[]'); }
 function saveJobs(j) { localStorage.setItem('jobs', JSON.stringify(j)); }
 
-function showLoading() {}
-function hideLoading() {}
+// === 风格选择 ===
+let selectedStyle = '情绪高昂、积极向上、充满活力';
+function selectStyle(el) {
+  document.querySelectorAll('#style-tags .tag').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  selectedStyle = el.dataset.style;
+}
 
+function getInstruction() {
+  const custom = document.getElementById('s-custom-style').value.trim();
+  return custom ? custom : selectedStyle;
+}
+
+// === 进度条 ===
+function showProgress(type, text) {
+  const el = document.getElementById(type + '-progress');
+  el.classList.remove('hidden');
+  document.getElementById(type + '-progress-text').textContent = text;
+  document.getElementById(type + '-progress-pct').textContent = '0%';
+  document.getElementById(type + '-progress-bar').style.width = '0%';
+}
+function updateProgress(type, pct, text) {
+  document.getElementById(type + '-progress-pct').textContent = pct + '%';
+  document.getElementById(type + '-progress-bar').style.width = pct + '%';
+  if(text) document.getElementById(type + '-progress-text').textContent = text;
+}
+function hideProgress(type) {
+  document.getElementById(type + '-progress').classList.add('hidden');
+}
+
+// === Tab 切换 ===
 function showTab(name) {
-  ['voices','new','speak'].forEach(t => {
+  ['voices','new','speak','history'].forEach(t => {
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==name);
   });
   document.querySelectorAll('.tab').forEach(el => {
     el.classList.toggle('active', el.textContent.includes(
-      name==='voices'?'声音库':name==='speak'?'文案朗读':'上传'
+      name==='voices'?'声音库':name==='speak'?'文案朗读':name==='history'?'任务记录':'上传'
     ));
   });
   if(name==='voices') renderVoices();
   if(name==='speak') renderVoiceOptions();
+  if(name==='history') renderHistory();
 }
 
 function esc(s){if(!s)return'';return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
@@ -128,7 +202,7 @@ function renderVoices() {
   const el = document.getElementById('voice-list');
   if(!voices.length) { el.innerHTML='<div class="card" style="text-align:center;color:#94a3b8">还没有声音，点击右上角上传</div>'; return; }
   el.innerHTML = voices.map(v => `
-    <div class="card voice-item">
+    <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
           <strong style="font-size:16px">${esc(v.name)}</strong>
@@ -139,7 +213,7 @@ function renderVoices() {
           <button class="btn-del" onclick="deleteVoice('${v.id}')">删除</button>
         </div>
       </div>
-      ${v.has_sample ? '<div style="color:#065f46;font-size:13px;margin-top:6px">✅ 克隆成功，去文案朗读使用</div>' : ''}
+      <div style="color:#065f46;font-size:13px;margin-top:6px">✅ 克隆成功，去文案朗读使用</div>
     </div>
   `).join('');
 }
@@ -151,15 +225,41 @@ function renderVoiceOptions() {
     voices.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join('');
 }
 
-// === 轮询任务状态 ===
-async function pollTask(taskId, maxWait = 120000) {
+// === 任务记录 ===
+function renderHistory() {
+  const jobs = getJobs();
+  const el = document.getElementById('history-list');
+  if(!jobs.length) { el.innerHTML='<div class="card" style="text-align:center;color:#94a3b8">暂无记录</div>'; return; }
+  el.innerHTML = jobs.map(j => `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <strong>${esc(j.title||'未命名')}</strong>
+          <span style="color:#94a3b8;font-size:13px;margin-left:8px">${esc(j.voice_name||'')}</span>
+        </div>
+        <div style="display:flex;align-items:center">
+          <span style="color:#94a3b8;font-size:12px">${new Date(j.created_at).toLocaleString('zh-CN')}</span>
+          <button class="btn-del" onclick="deleteJob('${j.id}')">删除</button>
+        </div>
+      </div>
+      <div style="font-size:13px;color:#64748b;margin-top:6px">${esc(j.text||'')}</div>
+      ${j.style ? `<div style="font-size:12px;color:#3b82f6;margin-top:4px">风格: ${esc(j.style)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// === 轮询 ===
+async function pollTask(taskId, progressType, maxWait = 120000) {
   const start = Date.now();
+  let pct = 0;
   while (Date.now() - start < maxWait) {
     await new Promise(r => setTimeout(r, 2000));
+    pct = Math.min(90, pct + 10);
+    updateProgress(progressType, pct, pct < 30 ? '正在处理...' : pct < 60 ? '生成中...' : '即将完成...');
     const res = await fetch(API + '/api/task/' + taskId);
     if (res.ok) {
       const data = await res.json();
-      if (data.status === 'done') return data;
+      if (data.status === 'done') { updateProgress(progressType, 100, '完成！'); return data; }
       if (data.status === 'error') throw new Error(data.error);
     }
   }
@@ -179,33 +279,31 @@ async function uploadVoice() {
   fd.append('file', file);
 
   const btn = document.getElementById('v-btn');
-  btn.disabled = true; btn.textContent = '克隆中，请稍候...';
-  showLoading();
+  btn.disabled = true; btn.textContent = '处理中...';
+  showProgress('v', '正在上传文件...');
 
   try {
-    // 1. 启动任务
+    updateProgress('v', 10, '正在上传...');
     const res = await fetch(API+'/api/clone', {method:'POST', body:fd});
     if(!res.ok) throw new Error(await res.text());
     const {task_id} = await res.json();
 
-    // 2. 轮询结果
-    const result = await pollTask(task_id);
+    updateProgress('v', 20, '正在克隆音色...');
+    const result = await pollTask(task_id, 'v');
 
     const voices = getVoices();
     voices.unshift({
       id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
-      name: name,
-      speaker: document.getElementById('v-speaker').value,
-      department: document.getElementById('v-dept').value,
-      language: 'ZH',
-      step_voice_id: result.step_voice_id,
-      has_sample: true,
+      name, speaker: document.getElementById('v-speaker').value,
+      department: document.getElementById('v-dept').value, language: 'ZH',
+      step_voice_id: result.step_voice_id, has_sample: true,
       created_at: new Date().toISOString(),
     });
     saveVoices(voices);
-    showTab('voices');
+
+    setTimeout(() => { showTab('voices'); }, 500);
   } catch(e) { errEl.textContent=e.message; errEl.classList.remove('hidden'); }
-  finally { btn.disabled=false; btn.textContent='开始克隆'; hideLoading(); }
+  finally { btn.disabled=false; btn.textContent='开始克隆'; setTimeout(()=>hideProgress('v'), 1000); }
 }
 
 // === 文案朗读 ===
@@ -221,51 +319,48 @@ async function createTTS() {
   if(!voice) { errEl.textContent='声音不存在'; errEl.classList.remove('hidden'); return; }
 
   const btn = document.getElementById('s-btn');
-  btn.disabled = true; btn.textContent = '生成中，请稍候...';
-  showLoading();
+  btn.disabled = true; btn.textContent = '处理中...';
+  showProgress('s', '正在生成语音...');
 
   try {
-    // 1. 启动任务
+    const instruction = getInstruction();
     const res = await fetch(API+'/api/tts', {
       method:'POST', headers:{'content-type':'application/json'},
-      body: JSON.stringify({step_voice_id: voice.step_voice_id, text: text})
+      body: JSON.stringify({step_voice_id: voice.step_voice_id, text, instruction})
     });
     if(!res.ok) throw new Error(await res.text());
     const {task_id} = await res.json();
 
-    // 2. 轮询结果
-    const result = await pollTask(task_id);
+    const result = await pollTask(task_id, 's');
 
-    // 保存任务记录
     const jobs = getJobs();
     jobs.unshift({
       id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
       title: document.getElementById('s-title').value || '未命名',
-      voice_name: voice.name,
-      text: text.slice(0, 50),
+      voice_name: voice.name, text: text.slice(0, 80), style: instruction,
       created_at: new Date().toISOString(),
     });
-    if(jobs.length > 20) jobs.pop();
+    if(jobs.length > 30) jobs.length = 30;
     saveJobs(jobs);
 
-    // 直接播放结果
     const audioEl = document.getElementById('tts-audio');
     audioEl.src = 'data:audio/mpeg;base64,' + result.audio;
     document.getElementById('tts-result').classList.remove('hidden');
     audioEl.play();
-  } catch(e) {
-    const msg = e.name === 'AbortError' ? '请求超时，请稍后重试' : e.message;
-    errEl.textContent=msg; errEl.classList.remove('hidden');
-  }
-  finally { btn.disabled=false; btn.textContent='生成语音'; hideLoading(); }
+  } catch(e) { errEl.textContent=e.message; errEl.classList.remove('hidden'); }
+  finally { btn.disabled=false; btn.textContent='生成语音'; setTimeout(()=>hideProgress('s'), 1000); }
 }
 
 // === 删除 ===
 function deleteVoice(id) {
-  if(!confirm('确定删除？')) return;
-  const voices = getVoices().filter(v => v.id !== id);
-  saveVoices(voices);
+  if(!confirm('确定删除该声音？')) return;
+  saveVoices(getVoices().filter(v => v.id !== id));
   renderVoices();
+}
+function deleteJob(id) {
+  if(!confirm('确定删除该记录？')) return;
+  saveJobs(getJobs().filter(j => j.id !== id));
+  renderHistory();
 }
 
 // 初始化
