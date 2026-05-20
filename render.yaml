@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: stepaudio-voice-studio
+    runtime: docker
+    plan: free
+    envVars:
+      - key: STEP_API_KEY
+        value: "3TK66wvoMBlQUYt953nHgtKoNC8SAJyRCIUjzNSz3ZtatHm0fehfODRkhYbYcfsyb"
+      - key: STEP_API_BASE
+        value: "https://api.stepfun.com/step_plan/v1"
+      - key: STEP_TTS_MODEL
+        value: "stepaudio-2.5-tts"

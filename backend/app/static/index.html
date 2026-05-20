@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StepAudio 声音工作室</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#1e293b;padding:24px}
+h1{font-size:24px;font-weight:700;margin-bottom:8px}
+.sub{color:#64748b;font-size:14px;margin-bottom:24px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:24px;margin-bottom:16px}
+label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+input,select,textarea{width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:12px;font-size:14px;margin-bottom:14px}
+textarea{min-height:80px;resize:vertical}
+input[type=file]{padding:16px;border-style:dashed;background:#f8fafc}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn{background:#0f172a;color:#fff;border:none;padding:12px 24px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;width:100%}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn2{background:#0f172a;color:#fff;border:none;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-del{background:none;border:1px solid #e2e8f0;color:#94a3b8;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;margin-left:8px}
+.btn-del:hover{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:600}
+.badge-processing{background:#fef3c7;color:#92400e}
+.badge-active{background:#d1fae5;color:#065f46}
+.badge-failed{background:#fee2e2;color:#991b1b}
+.badge-completed{background:#d1fae5;color:#065f46}
+.badge-queued{background:#e0f2fe;color:#075985}
+.err{background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px;font-size:13px;color:#991b1b;margin-top:8px;white-space:pre-wrap}
+.check{display:flex;align-items:flex-start;gap:8px;margin-bottom:14px;font-size:13px}
+.check input{width:auto;margin:2px 0 0 0}
+audio{width:100%;margin-top:10px}
+.voice-item{border-bottom:1px solid #f1f5f9;padding:14px 0}
+.voice-item:last-child{border:none}
+.tab{display:inline-block;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;margin-right:4px}
+.tab.active{background:#0f172a;color:#fff}
+.tab:not(.active){background:#f1f5f9;color:#64748b}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div style="display:flex;gap:8px;margin-bottom:20px">
+  <div class="tab active" onclick="showTab('voices')">声音库</div>
+  <div class="tab" onclick="showTab('speak')">文案朗读</div>
+  <div class="tab" onclick="showTab('jobs')">任务记录</div>
+</div>
+<div id="tab-voices">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div><h1>声音库</h1><div class="sub">上传录音或视频，克隆声音</div></div>
+    <button class="btn2" onclick="showTab('new')">+ 上传新声音</button>
+  </div>
+  <div id="voice-list"></div>
+</div>
+<div id="tab-new" class="hidden">
+  <h1>上传录音/视频，克隆声音</h1>
+  <div class="sub">建议 5-30 秒清晰人声，安静环境。支持音频和视频文件</div>
+  <div class="card" style="margin-top:16px">
+    <label>声音名称 *</label>
+    <input id="v-name" placeholder="例如：女主播A / 老板声音">
+    <div class="row">
+      <div><label>说话人</label><input id="v-speaker" placeholder="说话人姓名"></div>
+      <div><label>部门</label><input id="v-dept" placeholder="例如：内容组"></div>
+    </div>
+    <div class="row">
+      <div><label>语言</label>
+        <select id="v-lang"><option value="ZH">中文</option><option value="EN">英文</option><option value="JP">日文</option></select>
+      </div>
+      <div><label>标签</label><input id="v-tags" placeholder="温柔,带货,清晰"></div>
+    </div>
+    <label>音频/视频文件 *</label>
+    <input type="file" id="v-file" accept="audio/*,video/*">
+    <div class="check">
+      <input type="checkbox" id="v-consent">
+      <span>我确认该录音已获得本人或公司合法授权</span>
+    </div>
+    <div id="v-err" class="err hidden"></div>
+    <button class="btn" id="v-btn" onclick="uploadVoice()">开始克隆</button>
+  </div>
+</div>
+<div id="tab-speak" class="hidden">
+  <h1>文案朗读</h1>
+  <div class="sub">选择声音，输入文案，生成高质量语音</div>
+  <div class="card" style="margin-top:16px">
+    <label>选择声音 *</label>
+    <select id="s-voice"><option value="">请选择...</option></select>
+    <label>文案标题</label>
+    <input id="s-title" placeholder="例如：产品介绍视频配音">
+    <label>文案内容 *</label>
+    <textarea id="s-text" placeholder="输入要朗读的文案..."></textarea>
+    <div class="row">
+      <div><label>语言</label>
+        <select id="s-lang"><option value="ZH">中文</option><option value="EN">英文</option><option value="JP">日文</option></select>
+      </div>
+      <div><label>语速</label>
+        <select id="s-speed"><option value="0.8">慢</option><option value="1.0" selected>正常</option><option value="1.2">快</option></select>
+      </div>
+    </div>
+    <div id="s-err" class="err hidden"></div>
+    <button class="btn" onclick="createTTS()">生成语音</button>
+  </div>
+</div>
+<div id="tab-jobs" class="hidden">
+  <h1>任务记录</h1>
+  <div class="sub">TTS 合成任务状态</div>
+  <div id="job-list" style="margin-top:16px"></div>
+</div>
+<script>
+const API = '';
+const HEADERS = {'x-user-email':'demo@company.local','x-user-name':'Demo User'};
+let voices = [];
+
+function showTab(name) {
+  ['voices','new','speak','jobs'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('hidden', t!==name);
+  });
+  document.querySelectorAll('.tab').forEach(el => {
+    el.classList.toggle('active', el.textContent.includes(
+      name==='voices'?'声音库':name==='speak'?'文案朗读':name==='jobs'?'任务记录':'上传'
+    ));
+  });
+  if(name==='voices') loadVoices();
+  if(name==='jobs') loadJobs();
+  if(name==='speak') loadVoiceOptions();
+}
+
+async function loadVoices() {
+  try {
+    const res = await fetch(API+'/api/voices', {headers:HEADERS});
+    voices = await res.json();
+    const el = document.getElementById('voice-list');
+    if(!voices.length) { el.innerHTML='<div class="card" style="text-align:center;color:#94a3b8">还没有声音，点击右上角上传</div>'; return; }
+    el.innerHTML = voices.map(v => `
+      <div class="card voice-item">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <strong style="font-size:16px">${esc(v.name)}</strong>
+            <span style="color:#94a3b8;font-size:13px;margin-left:8px">${v.speaker_name||''} · ${v.language}</span>
+          </div>
+          <div style="display:flex;align-items:center">
+            <span class="badge badge-${v.status}">${v.status}</span>
+            <button class="btn-del" onclick="deleteVoice('${v.id}','${esc(v.name)}')">删除</button>
+          </div>
+        </div>
+        ${v.sample_audio_url ? `<audio controls src="${v.sample_audio_url}" style="margin-top:10px"></audio>` : '<div style="color:#94a3b8;font-size:13px;margin-top:10px">克隆中...</div>'}
+        ${v.error_message ? `<div class="err" style="margin-top:8px">${esc(v.error_message)}</div>` : ''}
+      </div>
+    `).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function uploadVoice() {
+  const name = document.getElementById('v-name').value.trim();
+  const file = document.getElementById('v-file').files[0];
+  const consent = document.getElementById('v-consent').checked;
+  const errEl = document.getElementById('v-err');
+  errEl.classList.add('hidden');
+  if(!name||!file||!consent) { errEl.textContent='请填写名称、选择文件并勾选授权'; errEl.classList.remove('hidden'); return; }
+  const fd = new FormData();
+  fd.append('name', name);
+  fd.append('speaker_name', document.getElementById('v-speaker').value);
+  fd.append('department', document.getElementById('v-dept').value);
+  fd.append('language', document.getElementById('v-lang').value);
+  fd.append('style_tags', document.getElementById('v-tags').value);
+  fd.append('consent_confirmed', 'true');
+  fd.append('file', file);
+  const btn = document.getElementById('v-btn');
+  btn.disabled = true; btn.textContent = '上传中...';
+  try {
+    const res = await fetch(API+'/api/voices', {method:'POST', headers:HEADERS, body:fd});
+    if(!res.ok) throw new Error(await res.text());
+    showTab('voices');
+  } catch(e) { errEl.textContent=e.message; errEl.classList.remove('hidden'); }
+  finally { btn.disabled=false; btn.textContent='开始克隆'; }
+}
+
+async function loadVoiceOptions() {
+  await loadVoices();
+  const sel = document.getElementById('s-voice');
+  sel.innerHTML = '<option value="">请选择...</option>' +
+    voices.filter(v=>v.status==='active').map(v=>`<option value="${v.id}">${esc(v.name)}</option>`).join('');
+}
+
+async function createTTS() {
+  const voice_id = document.getElementById('s-voice').value;
+  const text = document.getElementById('s-text').value.trim();
+  const errEl = document.getElementById('s-err');
+  errEl.classList.add('hidden');
+  if(!voice_id||!text) { errEl.textContent='请选择声音并输入文案'; errEl.classList.remove('hidden'); return; }
+  try {
+    const res = await fetch(API+'/api/tts', {
+      method:'POST', headers:{...HEADERS,'content-type':'application/json'},
+      body: JSON.stringify({voice_id, title:document.getElementById('s-title').value, text, language:document.getElementById('s-lang').value, speed:parseFloat(document.getElementById('s-speed').value), emotion:'natural'})
+    });
+    if(!res.ok) throw new Error(await res.text());
+    showTab('jobs');
+  } catch(e) { errEl.textContent=e.message; errEl.classList.remove('hidden'); }
+}
+
+async function loadJobs() {
+  try {
+    const res = await fetch(API+'/api/jobs', {headers:HEADERS});
+    const jobs = await res.json();
+    const el = document.getElementById('job-list');
+    if(!jobs.length) { el.innerHTML='<div class="card" style="text-align:center;color:#94a3b8">暂无任务</div>'; return; }
+    el.innerHTML = jobs.map(j => `
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><strong>${esc(j.title||'未命名')}</strong><span style="color:#94a3b8;font-size:13px;margin-left:8px">${esc(j.voice_name||'')}</span></div>
+          <div style="display:flex;align-items:center">
+            <span class="badge badge-${j.status}">${j.status}</span>
+            <button class="btn-del" onclick="deleteJob('${j.id}','${esc(j.title||'未命名')}')">删除</button>
+          </div>
+        </div>
+        <div style="font-size:13px;color:#64748b;margin-top:6px">${esc(j.text?.substring(0,80)||'')}${j.text?.length>80?'...':''}</div>
+        ${j.output_audio_url ? `<audio controls src="${j.output_audio_url}" style="margin-top:10px"></audio>` : ''}
+        ${j.error_message ? `<div class="err" style="margin-top:8px">${esc(j.error_message)}</div>` : ''}
+      </div>
+    `).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function deleteVoice(id, name) {
+  if(!confirm('确定删除声音「'+name+'」？')) return;
+  try { await fetch(API+'/api/voices/'+id, {method:'DELETE', headers:HEADERS}); loadVoices(); }
+  catch(e) { alert('删除失败'); }
+}
+async function deleteJob(id, title) {
+  if(!confirm('确定删除任务「'+title+'」？')) return;
+  try { await fetch(API+'/api/jobs/'+id, {method:'DELETE', headers:HEADERS}); loadJobs(); }
+  catch(e) { alert('删除失败'); }
+}
+function esc(s){if(!s)return'';return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+// 自动刷新（不打断正在播放的音频）
+function isAudioPlaying() {
+  return Array.from(document.querySelectorAll('audio')).some(a => !a.paused && !a.ended);
+}
+let prevJobCount = 0;
+setInterval(async () => {
+  if(isAudioPlaying()) return; // 正在播放，跳过刷新
+  const tab = document.querySelector('.tab.active')?.textContent || '';
+  if(tab.includes('声音库')) loadVoices();
+  if(tab.includes('任务记录')) {
+    const oldCount = prevJobCount;
+    await loadJobs();
+    if(oldCount > 0 && document.querySelectorAll('#job-list audio').length > oldCount) {
+      if(Notification.permission==='granted') new Notification('语音合成完成');
+    }
+    prevJobCount = document.querySelectorAll('#job-list audio').length;
+  }
+}, 3000);
+if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
+loadVoices();
+</script>
+</body>
+</html>
