@@ -299,14 +299,74 @@ async function pollTask(taskId, progressType, maxWait = 120000) {
   throw new Error('请求超时，请重试');
 }
 
+// === 视频提取音频 ===
+async function extractAudioFromVideo(videoFile) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.src = URL.createObjectURL(videoFile);
+    video.muted = true;
+
+    video.onloadedmetadata = async () => {
+      try {
+        const audioContext = new AudioContext();
+        const source = audioContext.createMediaElementSource(video);
+        const destination = audioContext.createMediaStreamDestination();
+        source.connect(destination);
+
+        const mediaRecorder = new MediaRecorder(destination.stream, { mimeType: 'audio/webm' });
+        const chunks = [];
+
+        mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(chunks, { type: 'audio/webm' });
+          const audioFile = new File([blob], videoFile.name.replace(/\.[^.]+$/, '.webm'), { type: 'audio/webm' });
+          URL.revokeObjectURL(video.src);
+          resolve(audioFile);
+        };
+
+        mediaRecorder.start();
+        video.play();
+
+        video.onended = () => {
+          mediaRecorder.stop();
+          audioContext.close();
+        };
+
+        // 超时保护（最长 60 秒）
+        setTimeout(() => {
+          if (mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+            audioContext.close();
+          }
+        }, 60000);
+      } catch(e) { reject(e); }
+    };
+
+    video.onerror = () => reject(new Error('无法读取视频文件'));
+  });
+}
+
 // === 上传克隆 ===
 async function uploadVoice() {
   const name = document.getElementById('v-name').value.trim();
-  const file = document.getElementById('v-file').files[0];
+  let file = document.getElementById('v-file').files[0];
   const consent = document.getElementById('v-consent').checked;
   const errEl = document.getElementById('v-err');
   errEl.classList.add('hidden');
   if(!name||!file||!consent) { errEl.textContent='请填写名称、选择文件并勾选授权'; errEl.classList.remove('hidden'); return; }
+
+  // 如果是视频文件，先提取音频
+  if (file.type.startsWith('video/')) {
+    showProgress('v', '正在从视频提取音频...');
+    try {
+      file = await extractAudioFromVideo(file);
+      updateProgress('v', 20, '音频提取完成');
+    } catch(e) {
+      errEl.textContent='视频音频提取失败: ' + e.message;
+      errEl.classList.remove('hidden');
+      return;
+    }
+  }
 
   const fd = new FormData();
   fd.append('file', file);
