@@ -168,11 +168,14 @@ async function uploadVoice() {
   fd.append('file', file);
 
   const btn = document.getElementById('v-btn');
-  btn.disabled = true; btn.textContent = '克隆中，请稍候...';
+  btn.disabled = true; btn.textContent = '克隆中，请稍候（约30秒）...';
   showLoading();
 
   try {
-    const res = await fetch(API+'/api/clone', {method:'POST', body:fd});
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+    const res = await fetch(API+'/api/clone', {method:'POST', body:fd, signal:controller.signal});
+    clearTimeout(timeout);
     if(!res.ok) throw new Error(await res.text());
     const data = await res.json();
 
@@ -189,7 +192,10 @@ async function uploadVoice() {
     });
     saveVoices(voices);
     showTab('voices');
-  } catch(e) { errEl.textContent=e.message; errEl.classList.remove('hidden'); }
+  } catch(e) {
+    const msg = e.name === 'AbortError' ? '请求超时，请稍后重试' : e.message;
+    errEl.textContent=msg; errEl.classList.remove('hidden');
+  }
   finally { btn.disabled=false; btn.textContent='开始克隆'; hideLoading(); }
 }
 
@@ -210,10 +216,14 @@ async function createTTS() {
   showLoading();
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
     const res = await fetch(API+'/api/tts', {
       method:'POST', headers:{'content-type':'application/json'},
-      body: JSON.stringify({step_voice_id: voice.step_voice_id, text: text})
+      body: JSON.stringify({step_voice_id: voice.step_voice_id, text: text}),
+      signal: controller.signal
     });
+    clearTimeout(timeout);
     if(!res.ok) throw new Error(await res.text());
     const data = await res.json();
 
@@ -234,7 +244,10 @@ async function createTTS() {
     audioEl.src = 'data:audio/mpeg;base64,' + data.audio;
     document.getElementById('tts-result').classList.remove('hidden');
     audioEl.play();
-  } catch(e) { errEl.textContent=e.message; errEl.classList.remove('hidden'); }
+  } catch(e) {
+    const msg = e.name === 'AbortError' ? '请求超时，请稍后重试' : e.message;
+    errEl.textContent=msg; errEl.classList.remove('hidden');
+  }
   finally { btn.disabled=false; btn.textContent='生成语音'; hideLoading(); }
 }
 
