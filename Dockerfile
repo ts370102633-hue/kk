@@ -4,7 +4,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY backend/ backend/
+COPY backend/ ./backend/
 
 ENV STEP_API_KEY="3TK66wvoMBlQUYt953nHgtKoNC8SAJyRCIUjzNSz3ZtatHm0fehfODRkhYbYcfsyb"
 ENV STEP_API_BASE="https://api.stepfun.com/step_plan/v1"

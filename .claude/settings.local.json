@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(cd *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(mkdir *)",
+      "Bash(rm *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(chmod *)",
+      "Bash(touch *)",
+      "Bash(echo *)",
+      "Bash(which *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(curl *)",
+      "Bash(gh *)",
+      "Bash(pip *)",
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(source *)",
+      "Bash(unset *)",
+      "Bash(export *)",
+      "Bash(lsof *)",
+      "Bash(kill *)",
+      "Bash(sleep *)",
+      "Bash(unzip *)",
+      "Bash(ffprobe *)",
+      "Bash(ffmpeg *)",
+      "Bash(ghp-import *)",
+      "Read",
+      "Edit",
+      "Write"
+    ]
+  }
+}

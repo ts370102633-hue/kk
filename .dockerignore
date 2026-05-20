@@ -1,7 +1,8 @@
-.venv/
-__pycache__/
+.venv
+__pycache__
 *.pyc
 *.db
-data/
-/tmp/
-.git/
+data
+.git
+.claude
+.DS_Store
