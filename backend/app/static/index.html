@@ -42,7 +42,7 @@ audio{width:100%;margin-top:10px}
 </head>
 <body>
 
-<div id="loading" class="loading hidden"><div class="loading-inner">⏳ 处理中，请稍候...</div></div>
+<div id="loading" class="loading" style="display:none"><div class="loading-inner">⏳ 处理中，请稍候...</div></div>
 
 <div style="display:flex;gap:8px;margin-bottom:20px">
   <div class="tab active" onclick="showTab('voices')">声音库</div>
@@ -108,8 +108,8 @@ function saveVoices(v) { localStorage.setItem('voices', JSON.stringify(v)); }
 function getJobs() { return JSON.parse(localStorage.getItem('jobs') || '[]'); }
 function saveJobs(j) { localStorage.setItem('jobs', JSON.stringify(j)); }
 
-function showLoading() { document.getElementById('loading').classList.remove('hidden'); }
-function hideLoading() { document.getElementById('loading').classList.add('hidden'); }
+function showLoading() { document.getElementById('loading').style.display = 'flex'; }
+function hideLoading() { document.getElementById('loading').style.display = 'none'; }
 
 function showTab(name) {
   ['voices','new','speak'].forEach(t => {
@@ -273,7 +273,6 @@ function deleteVoice(id) {
 }
 
 // 初始化
-document.getElementById('loading').classList.add('hidden');
 renderVoices();
 </script>
 </body>
