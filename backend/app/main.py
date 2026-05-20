@@ -182,8 +182,8 @@ async def create_tts(request: Request):
     }
 
     try:
-        instruction = ""
-        emotion_map = {"happy": "开心愉快", "sad": "低沉悲伤", "angry": "严肃有力", "gentle": "温柔轻柔"}
+        instruction = "用情绪高昂、积极向上、充满活力的语气"
+        emotion_map = {"happy": "开心愉快", "sad": "低沉悲伤", "angry": "严肃有力", "gentle": "温柔轻柔", "energetic": "情绪高昂、积极向上、充满活力"}
         if emotion in emotion_map:
             instruction = f"用{emotion_map[emotion]}的语气"
         audio_bytes = _tts(text, v["step_voice_id"], instruction=instruction)
