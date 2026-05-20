@@ -36,13 +36,9 @@ audio{width:100%;margin-top:10px}
 .tab.active{background:#0f172a;color:#fff}
 .tab:not(.active){background:#f1f5f9;color:#64748b}
 .hidden{display:none !important}
-.loading{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:999}
-.loading-inner{background:#fff;padding:24px 32px;border-radius:16px;font-size:15px;font-weight:600;box-shadow:0 4px 24px rgba(0,0,0,0.1)}
 </style>
 </head>
 <body>
-
-<div id="loading" class="loading" style="display:none"><div class="loading-inner">⏳ 处理中，请稍候...</div></div>
 
 <div style="display:flex;gap:8px;margin-bottom:20px">
   <div class="tab active" onclick="showTab('voices')">声音库</div>
@@ -108,8 +104,8 @@ function saveVoices(v) { localStorage.setItem('voices', JSON.stringify(v)); }
 function getJobs() { return JSON.parse(localStorage.getItem('jobs') || '[]'); }
 function saveJobs(j) { localStorage.setItem('jobs', JSON.stringify(j)); }
 
-function showLoading() { document.getElementById('loading').style.display = 'flex'; }
-function hideLoading() { document.getElementById('loading').style.display = 'none'; }
+function showLoading() {}
+function hideLoading() {}
 
 function showTab(name) {
   ['voices','new','speak'].forEach(t => {
