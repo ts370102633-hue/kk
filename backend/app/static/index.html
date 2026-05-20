@@ -144,10 +144,42 @@ audio{width:100%;margin-top:10px}
 const API = '';
 
 // === localStorage ===
-function getVoices() { return JSON.parse(localStorage.getItem('voices') || '[]'); }
-function saveVoices(v) { localStorage.setItem('voices', JSON.stringify(v)); }
-function getJobs() { return JSON.parse(localStorage.getItem('jobs') || '[]'); }
-function saveJobs(j) { localStorage.setItem('jobs', JSON.stringify(j)); }
+const LS_KEY = 'stepaudio_voices';
+const LJ_KEY = 'stepaudio_jobs';
+
+function isLocalStorageAvailable() {
+  try {
+    const test = '__test__';
+    localStorage.setItem(test, test);
+    localStorage.removeItem(test);
+    return true;
+  } catch(e) { return false; }
+}
+
+function getVoices() {
+  if (!isLocalStorageAvailable()) return [];
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch(e) { return []; }
+}
+function saveVoices(v) {
+  if (!isLocalStorageAvailable()) return;
+  try { localStorage.setItem(LS_KEY, JSON.stringify(v)); } catch(e) { console.error('保存声音失败:', e); }
+}
+function getJobs() {
+  if (!isLocalStorageAvailable()) return [];
+  try { return JSON.parse(localStorage.getItem(LJ_KEY) || '[]'); } catch(e) { return []; }
+}
+function saveJobs(j) {
+  if (!isLocalStorageAvailable()) return;
+  try { localStorage.setItem(LJ_KEY, JSON.stringify(j)); } catch(e) { console.error('保存任务失败:', e); }
+}
+
+// 检查 localStorage 状态
+if (!isLocalStorageAvailable()) {
+  document.addEventListener('DOMContentLoaded', () => {
+    const el = document.getElementById('voice-list');
+    if (el) el.innerHTML = '<div class="card" style="background:#fef3c7;color:#92400e">⚠️ 浏览器不支持本地存储，请勿使用无痕模式</div>';
+  });
+}
 
 // === 风格选择 ===
 let selectedStyle = '情绪高昂、积极向上、充满活力';
