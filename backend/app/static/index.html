@@ -41,34 +41,31 @@ audio{width:100%;margin-top:10px}
 </style>
 </head>
 <body>
+
 <div id="loading" class="loading hidden"><div class="loading-inner">⏳ 处理中，请稍候...</div></div>
+
 <div style="display:flex;gap:8px;margin-bottom:20px">
   <div class="tab active" onclick="showTab('voices')">声音库</div>
   <div class="tab" onclick="showTab('speak')">文案朗读</div>
-  <div class="tab" onclick="showTab('jobs')">任务记录</div>
 </div>
+
 <div id="tab-voices">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-    <div><h1>声音库</h1><div class="sub">上传录音或视频，克隆声音</div></div>
+    <div><h1>声音库</h1><div class="sub">上传录音或视频，克隆声音（数据存在浏览器，不会丢失）</div></div>
     <button class="btn2" onclick="showTab('new')">+ 上传新声音</button>
   </div>
   <div id="voice-list"></div>
 </div>
+
 <div id="tab-new" class="hidden">
   <h1>上传录音/视频，克隆声音</h1>
-  <div class="sub">建议 5-30 秒清晰人声，安静环境。支持音频和视频文件</div>
+  <div class="sub">建议 5-30 秒清晰人声，安静环境</div>
   <div class="card" style="margin-top:16px">
     <label>声音名称 *</label>
     <input id="v-name" placeholder="例如：女主播A / 老板声音">
     <div class="row">
       <div><label>说话人</label><input id="v-speaker" placeholder="说话人姓名"></div>
       <div><label>部门</label><input id="v-dept" placeholder="例如：内容组"></div>
-    </div>
-    <div class="row">
-      <div><label>语言</label>
-        <select id="v-lang"><option value="ZH">中文</option><option value="EN">英文</option><option value="JP">日文</option></select>
-      </div>
-      <div><label>标签</label><input id="v-tags" placeholder="温柔,带货,清晰"></div>
     </div>
     <label>音频/视频文件 *</label>
     <input type="file" id="v-file" accept="audio/*,video/*">
@@ -80,6 +77,7 @@ audio{width:100%;margin-top:10px}
     <button class="btn" id="v-btn" onclick="uploadVoice()">开始克隆</button>
   </div>
 </div>
+
 <div id="tab-speak" class="hidden">
   <h1>文案朗读</h1>
   <div class="sub">选择声音，输入文案，生成高质量语音</div>
@@ -90,70 +88,74 @@ audio{width:100%;margin-top:10px}
     <input id="s-title" placeholder="例如：产品介绍视频配音">
     <label>文案内容 *</label>
     <textarea id="s-text" placeholder="输入要朗读的文案..."></textarea>
-    <div class="row">
-      <div><label>语言</label>
-        <select id="s-lang"><option value="ZH">中文</option><option value="EN">英文</option><option value="JP">日文</option></select>
-      </div>
-      <div><label>语速</label>
-        <select id="s-speed"><option value="0.8">慢</option><option value="1.0" selected>正常</option><option value="1.2">快</option></select>
-      </div>
-    </div>
     <div id="s-err" class="err hidden"></div>
-    <button class="btn" onclick="createTTS()">生成语音</button>
+    <button class="btn" id="s-btn" onclick="createTTS()">生成语音</button>
+  </div>
+  <div id="tts-result" class="hidden" style="margin-top:16px">
+    <div class="card">
+      <strong>生成结果</strong>
+      <audio id="tts-audio" controls style="margin-top:10px"></audio>
+    </div>
   </div>
 </div>
-<div id="tab-jobs" class="hidden">
-  <h1>任务记录</h1>
-  <div class="sub">TTS 合成任务状态</div>
-  <div id="job-list" style="margin-top:16px"></div>
-</div>
+
 <script>
 const API = '';
-const HEADERS = {'x-user-email':'demo@company.local','x-user-name':'Demo User'};
-let voices = [];
+
+// === localStorage 持久化 ===
+function getVoices() { return JSON.parse(localStorage.getItem('voices') || '[]'); }
+function saveVoices(v) { localStorage.setItem('voices', JSON.stringify(v)); }
+function getJobs() { return JSON.parse(localStorage.getItem('jobs') || '[]'); }
+function saveJobs(j) { localStorage.setItem('jobs', JSON.stringify(j)); }
 
 function showLoading() { document.getElementById('loading').classList.remove('hidden'); }
 function hideLoading() { document.getElementById('loading').classList.add('hidden'); }
 
 function showTab(name) {
-  ['voices','new','speak','jobs'].forEach(t => {
+  ['voices','new','speak'].forEach(t => {
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==name);
   });
   document.querySelectorAll('.tab').forEach(el => {
     el.classList.toggle('active', el.textContent.includes(
-      name==='voices'?'声音库':name==='speak'?'文案朗读':name==='jobs'?'任务记录':'上传'
+      name==='voices'?'声音库':name==='speak'?'文案朗读':'上传'
     ));
   });
-  if(name==='voices') loadVoices();
-  if(name==='jobs') loadJobs();
-  if(name==='speak') loadVoiceOptions();
+  if(name==='voices') renderVoices();
+  if(name==='speak') renderVoiceOptions();
 }
 
-async function loadVoices() {
-  try {
-    const res = await fetch(API+'/api/voices', {headers:HEADERS});
-    voices = await res.json();
-    const el = document.getElementById('voice-list');
-    if(!voices.length) { el.innerHTML='<div class="card" style="text-align:center;color:#94a3b8">还没有声音，点击右上角上传</div>'; return; }
-    el.innerHTML = voices.map(v => `
-      <div class="card voice-item">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div>
-            <strong style="font-size:16px">${esc(v.name)}</strong>
-            <span style="color:#94a3b8;font-size:13px;margin-left:8px">${v.speaker_name||''} · ${v.language}</span>
-          </div>
-          <div style="display:flex;align-items:center">
-            <span class="badge badge-${v.status}">${v.status}</span>
-            <button class="btn-del" onclick="deleteVoice('${v.id}','${esc(v.name)}')">删除</button>
-          </div>
+function esc(s){if(!s)return'';return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+// === 声音库 ===
+function renderVoices() {
+  const voices = getVoices();
+  const el = document.getElementById('voice-list');
+  if(!voices.length) { el.innerHTML='<div class="card" style="text-align:center;color:#94a3b8">还没有声音，点击右上角上传</div>'; return; }
+  el.innerHTML = voices.map(v => `
+    <div class="card voice-item">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <strong style="font-size:16px">${esc(v.name)}</strong>
+          <span style="color:#94a3b8;font-size:13px;margin-left:8px">${esc(v.speaker||'')} · ${esc(v.language||'ZH')}</span>
         </div>
-        ${v.sample_audio_url ? `<audio controls src="${v.sample_audio_url}" style="margin-top:10px"></audio>` : '<div style="color:#94a3b8;font-size:13px;margin-top:10px">克隆中...</div>'}
-        ${v.error_message ? `<div class="err" style="margin-top:8px">${esc(v.error_message)}</div>` : ''}
+        <div style="display:flex;align-items:center">
+          <span class="badge badge-active">active</span>
+          <button class="btn-del" onclick="deleteVoice('${v.id}')">删除</button>
+        </div>
       </div>
-    `).join('');
-  } catch(e) { console.error(e); }
+      ${v.sample_audio ? `<audio controls src="data:audio/mpeg;base64,${v.sample_audio}" style="margin-top:10px"></audio>` : ''}
+    </div>
+  `).join('');
 }
 
+function renderVoiceOptions() {
+  const voices = getVoices();
+  const sel = document.getElementById('s-voice');
+  sel.innerHTML = '<option value="">请选择...</option>' +
+    voices.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join('');
+}
+
+// === 上传克隆 ===
 async function uploadVoice() {
   const name = document.getElementById('v-name').value.trim();
   const file = document.getElementById('v-file').files[0];
@@ -161,108 +163,91 @@ async function uploadVoice() {
   const errEl = document.getElementById('v-err');
   errEl.classList.add('hidden');
   if(!name||!file||!consent) { errEl.textContent='请填写名称、选择文件并勾选授权'; errEl.classList.remove('hidden'); return; }
+
   const fd = new FormData();
-  fd.append('name', name);
-  fd.append('speaker_name', document.getElementById('v-speaker').value);
-  fd.append('department', document.getElementById('v-dept').value);
-  fd.append('language', document.getElementById('v-lang').value);
-  fd.append('style_tags', document.getElementById('v-tags').value);
-  fd.append('consent_confirmed', 'true');
   fd.append('file', file);
+
   const btn = document.getElementById('v-btn');
-  btn.disabled = true; btn.textContent = '上传中...';
+  btn.disabled = true; btn.textContent = '克隆中，请稍候...';
   showLoading();
+
   try {
-    const res = await fetch(API+'/api/voices', {method:'POST', headers:HEADERS, body:fd});
+    const res = await fetch(API+'/api/clone', {method:'POST', body:fd});
     if(!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+
+    const voices = getVoices();
+    voices.unshift({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+      name: name,
+      speaker: document.getElementById('v-speaker').value,
+      department: document.getElementById('v-dept').value,
+      language: 'ZH',
+      step_voice_id: data.step_voice_id,
+      sample_audio: data.sample_audio,
+      created_at: new Date().toISOString(),
+    });
+    saveVoices(voices);
     showTab('voices');
   } catch(e) { errEl.textContent=e.message; errEl.classList.remove('hidden'); }
   finally { btn.disabled=false; btn.textContent='开始克隆'; hideLoading(); }
 }
 
-async function loadVoiceOptions() {
-  const sel = document.getElementById('s-voice');
-  sel.innerHTML = '<option value="">加载中...</option>';
-  await loadVoices();
-  sel.innerHTML = '<option value="">请选择...</option>' +
-    voices.filter(v=>v.status==='active').map(v=>`<option value="${v.id}">${esc(v.name)}</option>`).join('');
-}
-
+// === 文案朗读 ===
 async function createTTS() {
-  const voice_id = document.getElementById('s-voice').value;
+  const voiceId = document.getElementById('s-voice').value;
   const text = document.getElementById('s-text').value.trim();
   const errEl = document.getElementById('s-err');
   errEl.classList.add('hidden');
-  if(!voice_id||!text) { errEl.textContent='请选择声音并输入文案'; errEl.classList.remove('hidden'); return; }
-  const btn = document.querySelector('#tab-speak .btn');
+  if(!voiceId||!text) { errEl.textContent='请选择声音并输入文案'; errEl.classList.remove('hidden'); return; }
+
+  const voices = getVoices();
+  const voice = voices.find(v => v.id === voiceId);
+  if(!voice) { errEl.textContent='声音不存在'; errEl.classList.remove('hidden'); return; }
+
+  const btn = document.getElementById('s-btn');
   btn.disabled = true; btn.textContent = '生成中，请稍候...';
   showLoading();
+
   try {
     const res = await fetch(API+'/api/tts', {
-      method:'POST', headers:{...HEADERS,'content-type':'application/json'},
-      body: JSON.stringify({voice_id, title:document.getElementById('s-title').value, text, language:document.getElementById('s-lang').value, speed:parseFloat(document.getElementById('s-speed').value), emotion:'natural'})
+      method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({step_voice_id: voice.step_voice_id, text: text})
     });
     if(!res.ok) throw new Error(await res.text());
-    showTab('jobs');
+    const data = await res.json();
+
+    // 保存任务记录
+    const jobs = getJobs();
+    jobs.unshift({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+      title: document.getElementById('s-title').value || '未命名',
+      voice_name: voice.name,
+      text: text,
+      audio: data.audio,
+      created_at: new Date().toISOString(),
+    });
+    saveJobs(jobs);
+
+    // 直接播放结果
+    const audioEl = document.getElementById('tts-audio');
+    audioEl.src = 'data:audio/mpeg;base64,' + data.audio;
+    document.getElementById('tts-result').classList.remove('hidden');
+    audioEl.play();
   } catch(e) { errEl.textContent=e.message; errEl.classList.remove('hidden'); }
   finally { btn.disabled=false; btn.textContent='生成语音'; hideLoading(); }
 }
 
-async function loadJobs() {
-  try {
-    const res = await fetch(API+'/api/jobs', {headers:HEADERS});
-    const jobs = await res.json();
-    const el = document.getElementById('job-list');
-    if(!jobs.length) { el.innerHTML='<div class="card" style="text-align:center;color:#94a3b8">暂无任务</div>'; return; }
-    el.innerHTML = jobs.map(j => `
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><strong>${esc(j.title||'未命名')}</strong><span style="color:#94a3b8;font-size:13px;margin-left:8px">${esc(j.voice_name||'')}</span></div>
-          <div style="display:flex;align-items:center">
-            <span class="badge badge-${j.status}">${j.status}</span>
-            <button class="btn-del" onclick="deleteJob('${j.id}','${esc(j.title||'未命名')}')">删除</button>
-          </div>
-        </div>
-        <div style="font-size:13px;color:#64748b;margin-top:6px">${esc(j.text?.substring(0,80)||'')}${j.text?.length>80?'...':''}</div>
-        ${j.output_audio_url ? `<audio controls src="${j.output_audio_url}" style="margin-top:10px"></audio>` : ''}
-        ${j.error_message ? `<div class="err" style="margin-top:8px">${esc(j.error_message)}</div>` : ''}
-      </div>
-    `).join('');
-  } catch(e) { console.error(e); }
+// === 删除 ===
+function deleteVoice(id) {
+  if(!confirm('确定删除？')) return;
+  const voices = getVoices().filter(v => v.id !== id);
+  saveVoices(voices);
+  renderVoices();
 }
 
-async function deleteVoice(id, name) {
-  if(!confirm('确定删除声音「'+name+'」？')) return;
-  try { await fetch(API+'/api/voices/'+id, {method:'DELETE', headers:HEADERS}); loadVoices(); }
-  catch(e) { alert('删除失败'); }
-}
-async function deleteJob(id, title) {
-  if(!confirm('确定删除任务「'+title+'」？')) return;
-  try { await fetch(API+'/api/jobs/'+id, {method:'DELETE', headers:HEADERS}); loadJobs(); }
-  catch(e) { alert('删除失败'); }
-}
-function esc(s){if(!s)return'';return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-
-// 自动刷新（不打断正在播放的音频）
-function isAudioPlaying() {
-  return Array.from(document.querySelectorAll('audio')).some(a => !a.paused && !a.ended);
-}
-let prevJobCount = 0;
-setInterval(async () => {
-  if(isAudioPlaying()) return; // 正在播放，跳过刷新
-  const tab = document.querySelector('.tab.active')?.textContent || '';
-  if(tab.includes('声音库')) loadVoices();
-  if(tab.includes('任务记录')) {
-    const oldCount = prevJobCount;
-    await loadJobs();
-    if(oldCount > 0 && document.querySelectorAll('#job-list audio').length > oldCount) {
-      if(Notification.permission==='granted') new Notification('语音合成完成');
-    }
-    prevJobCount = document.querySelectorAll('#job-list audio').length;
-  }
-}, 3000);
-if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
-loadVoices();
+// 初始化
+renderVoices();
 </script>
 </body>
 </html>
