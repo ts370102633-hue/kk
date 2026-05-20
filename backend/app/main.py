@@ -19,11 +19,11 @@ HEADERS = {"Authorization": f"Bearer {API_KEY}"}
 _tasks = {}
 
 
-def _do_clone(task_id: str, file_bytes: bytes, filename: str):
+def _do_clone(task_id: str, file_bytes: bytes, filename: str, content_type: str = "audio/wav"):
     try:
         # 上传
         resp = requests.post("https://api.stepfun.com/v1/files", headers=HEADERS,
-            files={"file": (filename, file_bytes, "audio/wav")}, data={"purpose": "storage"}, timeout=60)
+            files={"file": (filename, file_bytes, content_type)}, data={"purpose": "storage"}, timeout=60)
         resp.raise_for_status()
         file_id = resp.json()["id"]
         # 克隆
@@ -82,7 +82,8 @@ async def clone_voice(file: UploadFile = File(...)):
     content = await file.read()
     task_id = str(uuid.uuid4())
     _tasks[task_id] = {"status": "processing"}
-    thread = threading.Thread(target=_do_clone, args=(task_id, content, file.filename or "audio.wav"))
+    content_type = file.content_type or "audio/wav"
+    thread = threading.Thread(target=_do_clone, args=(task_id, content, file.filename or "audio.wav", content_type))
     thread.start()
     return JSONResponse({"task_id": task_id})
 
