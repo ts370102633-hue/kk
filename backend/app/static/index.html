@@ -36,9 +36,12 @@ audio{width:100%;margin-top:10px}
 .tab.active{background:#0f172a;color:#fff}
 .tab:not(.active){background:#f1f5f9;color:#64748b}
 .hidden{display:none}
+.loading{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:999}
+.loading-inner{background:#fff;padding:24px 32px;border-radius:16px;font-size:15px;font-weight:600;box-shadow:0 4px 24px rgba(0,0,0,0.1)}
 </style>
 </head>
 <body>
+<div id="loading" class="loading hidden"><div class="loading-inner">⏳ 处理中，请稍候...</div></div>
 <div style="display:flex;gap:8px;margin-bottom:20px">
   <div class="tab active" onclick="showTab('voices')">声音库</div>
   <div class="tab" onclick="showTab('speak')">文案朗读</div>
@@ -109,6 +112,9 @@ const API = '';
 const HEADERS = {'x-user-email':'demo@company.local','x-user-name':'Demo User'};
 let voices = [];
 
+function showLoading() { document.getElementById('loading').classList.remove('hidden'); }
+function hideLoading() { document.getElementById('loading').classList.add('hidden'); }
+
 function showTab(name) {
   ['voices','new','speak','jobs'].forEach(t => {
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==name);
@@ -165,17 +171,19 @@ async function uploadVoice() {
   fd.append('file', file);
   const btn = document.getElementById('v-btn');
   btn.disabled = true; btn.textContent = '上传中...';
+  showLoading();
   try {
     const res = await fetch(API+'/api/voices', {method:'POST', headers:HEADERS, body:fd});
     if(!res.ok) throw new Error(await res.text());
     showTab('voices');
   } catch(e) { errEl.textContent=e.message; errEl.classList.remove('hidden'); }
-  finally { btn.disabled=false; btn.textContent='开始克隆'; }
+  finally { btn.disabled=false; btn.textContent='开始克隆'; hideLoading(); }
 }
 
 async function loadVoiceOptions() {
-  await loadVoices();
   const sel = document.getElementById('s-voice');
+  sel.innerHTML = '<option value="">加载中...</option>';
+  await loadVoices();
   sel.innerHTML = '<option value="">请选择...</option>' +
     voices.filter(v=>v.status==='active').map(v=>`<option value="${v.id}">${esc(v.name)}</option>`).join('');
 }
@@ -186,6 +194,9 @@ async function createTTS() {
   const errEl = document.getElementById('s-err');
   errEl.classList.add('hidden');
   if(!voice_id||!text) { errEl.textContent='请选择声音并输入文案'; errEl.classList.remove('hidden'); return; }
+  const btn = document.querySelector('#tab-speak .btn');
+  btn.disabled = true; btn.textContent = '生成中，请稍候...';
+  showLoading();
   try {
     const res = await fetch(API+'/api/tts', {
       method:'POST', headers:{...HEADERS,'content-type':'application/json'},
@@ -194,6 +205,7 @@ async function createTTS() {
     if(!res.ok) throw new Error(await res.text());
     showTab('jobs');
   } catch(e) { errEl.textContent=e.message; errEl.classList.remove('hidden'); }
+  finally { btn.disabled=false; btn.textContent='生成语音'; hideLoading(); }
 }
 
 async function loadJobs() {
