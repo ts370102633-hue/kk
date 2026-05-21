@@ -28,7 +28,8 @@ DAILY_BONUS = 10
 COST_PER_USE = 1
 
 # === 数据库 ===
-DB_PATH = Path(__file__).parent.parent / "users.db"
+import tempfile
+DB_PATH = Path(tempfile.gettempdir()) / "users.db"
 
 def get_db():
     conn = sqlite3.connect(str(DB_PATH))
