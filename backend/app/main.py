@@ -26,6 +26,15 @@ INITIAL_CREDITS = 100
 DAILY_BONUS = 10
 COST_PER_USE = 1
 
+# === 密码和 JWT ===
+import hashlib
+
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return hash_password(plain_password) == hashed_password
+
 # === 数据库 ===
 import tempfile
 DB_PATH = Path(tempfile.gettempdir()) / "users.db"
@@ -60,23 +69,13 @@ def init_db():
     # 创建默认管理员账号
     admin = conn.execute("SELECT * FROM users WHERE username = 'admin'").fetchone()
     if not admin:
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
         admin_id = str(uuid.uuid4())
         conn.execute(
             "INSERT INTO users (id, username, password_hash, credits, is_admin, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            (admin_id, "admin", pwd_context.hash("admin123"), 999999, 1, datetime.utcnow().isoformat())
+            (admin_id, "admin", hash_password("admin123"), 999999, 1, datetime.utcnow().isoformat())
         )
     conn.commit()
     conn.close()
-
-# === 密码和 JWT ===
-import hashlib
-
-def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return hash_password(plain_password) == hashed_password
 
 def create_access_token(data: dict):
     to_encode = data.copy()
