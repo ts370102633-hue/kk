@@ -4,7 +4,7 @@ StepAudio Voice Studio — 带用户认证和积分系统
 from __future__ import annotations
 import uuid
 import base64
-import sqlite3
+import hashlib
 import threading
 from datetime import datetime, date
 from pathlib import Path
@@ -27,59 +27,32 @@ DAILY_BONUS = 10
 COST_PER_USE = 1
 
 # === 密码和 JWT ===
-import hashlib
-
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return hash_password(plain_password) == hashed_password
 
-# === 数据库 ===
-import tempfile
-DB_PATH = Path(tempfile.gettempdir()) / "users.db"
-
-def get_db():
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.row_factory = sqlite3.Row
-    return conn
-
-def init_db():
-    conn = get_db()
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id TEXT PRIMARY KEY,
-            username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            credits INTEGER DEFAULT 100,
-            is_admin BOOLEAN DEFAULT 0,
-            last_login_date TEXT,
-            created_at TEXT
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS invite_codes (
-            code TEXT PRIMARY KEY,
-            created_by TEXT NOT NULL,
-            used_by TEXT,
-            is_used BOOLEAN DEFAULT 0,
-            created_at TEXT
-        )
-    """)
-    # 创建默认管理员账号
-    admin = conn.execute("SELECT * FROM users WHERE username = 'admin'").fetchone()
-    if not admin:
-        admin_id = str(uuid.uuid4())
-        conn.execute(
-            "INSERT INTO users (id, username, password_hash, credits, is_admin, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            (admin_id, "admin", hash_password("admin123"), 999999, 1, datetime.utcnow().isoformat())
-        )
-    conn.commit()
-    conn.close()
-
 def create_access_token(data: dict):
     to_encode = data.copy()
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+# === 内存数据库 ===
+_users = {}
+_invite_codes = {}
+
+def init_db():
+    # 创建默认管理员账号
+    if "admin" not in _users:
+        _users["admin"] = {
+            "id": str(uuid.uuid4()),
+            "username": "admin",
+            "password_hash": hash_password("admin123"),
+            "credits": 999999,
+            "is_admin": True,
+            "last_login_date": date.today().isoformat(),
+            "created_at": datetime.utcnow().isoformat()
+        }
 
 def get_current_user(authorization: Optional[str] = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
@@ -87,18 +60,12 @@ def get_current_user(authorization: Optional[str] = Header(None)):
     token = authorization.split(" ")[1]
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = payload.get("sub")
-        if not user_id:
+        username = payload.get("sub")
+        if not username or username not in _users:
             raise HTTPException(status_code=401, detail="无效的token")
     except JWTError:
         raise HTTPException(status_code=401, detail="token已过期")
-
-    conn = get_db()
-    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-    conn.close()
-    if not user:
-        raise HTTPException(status_code=401, detail="用户不存在")
-    return dict(user)
+    return _users[username]
 
 # === 内存任务存储 ===
 _tasks = {}
@@ -174,35 +141,31 @@ async def register(request: Request):
     if len(password) < 6:
         raise HTTPException(400, "密码至少6位")
 
-    conn = get_db()
-
     # 检查用户名是否已存在
-    if conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone():
-        conn.close()
+    if username in _users:
         raise HTTPException(400, "用户名已存在")
 
     # 验证邀请码
-    code_row = conn.execute("SELECT * FROM invite_codes WHERE code = ? AND is_used = 0", (invite_code,)).fetchone()
-    if not code_row:
-        conn.close()
+    if invite_code not in _invite_codes or _invite_codes[invite_code]["is_used"]:
         raise HTTPException(400, "邀请码无效或已使用")
 
     # 创建用户
-    user_id = str(uuid.uuid4())
-    now = datetime.utcnow().isoformat()
-    conn.execute(
-        "INSERT INTO users (id, username, password_hash, credits, is_admin, last_login_date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (user_id, username, hash_password(password), INITIAL_CREDITS, 0, date.today().isoformat(), now)
-    )
+    _users[username] = {
+        "id": str(uuid.uuid4()),
+        "username": username,
+        "password_hash": hash_password(password),
+        "credits": INITIAL_CREDITS,
+        "is_admin": False,
+        "last_login_date": date.today().isoformat(),
+        "created_at": datetime.utcnow().isoformat()
+    }
 
     # 标记邀请码已使用
-    conn.execute("UPDATE invite_codes SET is_used = 1, used_by = ? WHERE code = ?", (user_id, invite_code))
+    _invite_codes[invite_code]["is_used"] = True
+    _invite_codes[invite_code]["used_by"] = username
 
-    conn.commit()
-    conn.close()
-
-    token = create_access_token({"sub": user_id})
-    return {"token": token, "user_id": user_id, "username": username, "credits": INITIAL_CREDITS}
+    token = create_access_token({"sub": username})
+    return {"token": token, "username": username, "credits": INITIAL_CREDITS}
 
 @app.post("/api/login")
 async def login(request: Request):
@@ -210,79 +173,63 @@ async def login(request: Request):
     username = body.get("username", "").strip()
     password = body.get("password", "")
 
-    conn = get_db()
-    user = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+    if username not in _users:
+        raise HTTPException(401, "用户名或密码错误")
 
-    if not user or not verify_password(password, user["password_hash"]):
-        conn.close()
+    user = _users[username]
+    if not verify_password(password, user["password_hash"]):
         raise HTTPException(401, "用户名或密码错误")
 
     # 检查每日登录奖励
     today = date.today().isoformat()
     if user["last_login_date"] != today:
-        conn.execute("UPDATE users SET credits = credits + ?, last_login_date = ? WHERE id = ?",
-                     (DAILY_BONUS, today, user["id"]))
-        conn.commit()
-        user = conn.execute("SELECT * FROM users WHERE id = ?", (user["id"],)).fetchone()
+        user["credits"] += DAILY_BONUS
+        user["last_login_date"] = today
 
-    conn.close()
-
-    token = create_access_token({"sub": user["id"]})
-    return {"token": token, "user_id": user["id"], "username": user["username"], "credits": user["credits"]}
+    token = create_access_token({"sub": username})
+    return {"token": token, "username": username, "credits": user["credits"]}
 
 @app.get("/api/me")
 async def get_me(current_user: dict = Depends(get_current_user)):
-    return {"user_id": current_user["id"], "username": current_user["username"],
-            "credits": current_user["credits"], "is_admin": current_user["is_admin"]}
+    return {"username": current_user["username"], "credits": current_user["credits"],
+            "is_admin": current_user["is_admin"]}
 
 # === 管理员 API ===
 @app.post("/api/admin/generate-code")
-async def generate_invite_code(request: Request, current_user: dict = Depends(get_current_user)):
+async def generate_invite_code(current_user: dict = Depends(get_current_user)):
     if not current_user["is_admin"]:
         raise HTTPException(403, "需要管理员权限")
 
     code = str(uuid.uuid4())[:8].upper()
-    conn = get_db()
-    conn.execute(
-        "INSERT INTO invite_codes (code, created_by, is_used, created_at) VALUES (?, ?, ?, ?)",
-        (code, current_user["id"], 0, datetime.utcnow().isoformat())
-    )
-    conn.commit()
-    conn.close()
+    _invite_codes[code] = {
+        "code": code,
+        "created_by": current_user["username"],
+        "is_used": False,
+        "used_by": None,
+        "created_at": datetime.utcnow().isoformat()
+    }
     return {"code": code}
 
 @app.get("/api/admin/users")
 async def list_users(current_user: dict = Depends(get_current_user)):
     if not current_user["is_admin"]:
         raise HTTPException(403, "需要管理员权限")
-
-    conn = get_db()
-    users = conn.execute("SELECT id, username, credits, is_admin, last_login_date, created_at FROM users").fetchall()
-    conn.close()
-    return [dict(u) for u in users]
+    return [{"username": u["username"], "credits": u["credits"], "is_admin": u["is_admin"],
+             "created_at": u["created_at"]} for u in _users.values()]
 
 @app.get("/api/admin/codes")
 async def list_invite_codes(current_user: dict = Depends(get_current_user)):
     if not current_user["is_admin"]:
         raise HTTPException(403, "需要管理员权限")
-
-    conn = get_db()
-    codes = conn.execute("SELECT * FROM invite_codes ORDER BY created_at DESC").fetchall()
-    conn.close()
-    return [dict(c) for c in codes]
+    return list(_invite_codes.values())
 
 # === 克隆和 TTS API（需要认证和积分）===
 @app.post("/api/clone")
 async def clone_voice(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
-    # 检查积分
     if current_user["credits"] < COST_PER_USE:
         raise HTTPException(400, f"积分不足，需要 {COST_PER_USE} 积分，当前 {current_user['credits']} 积分")
 
-    # 扣除积分
-    conn = get_db()
-    conn.execute("UPDATE users SET credits = credits - ? WHERE id = ?", (COST_PER_USE, current_user["id"]))
-    conn.commit()
-    conn.close()
+    current_user["credits"] -= COST_PER_USE
 
     content = await file.read()
     task_id = str(uuid.uuid4())
@@ -294,7 +241,6 @@ async def clone_voice(file: UploadFile = File(...), current_user: dict = Depends
 
 @app.post("/api/tts")
 async def create_tts(request: Request, current_user: dict = Depends(get_current_user)):
-    # 检查积分
     if current_user["credits"] < COST_PER_USE:
         raise HTTPException(400, f"积分不足，需要 {COST_PER_USE} 积分，当前 {current_user['credits']} 积分")
 
@@ -305,11 +251,7 @@ async def create_tts(request: Request, current_user: dict = Depends(get_current_
     if not step_voice_id or not text:
         raise HTTPException(400, "缺少参数")
 
-    # 扣除积分
-    conn = get_db()
-    conn.execute("UPDATE users SET credits = credits - ? WHERE id = ?", (COST_PER_USE, current_user["id"]))
-    conn.commit()
-    conn.close()
+    current_user["credits"] -= COST_PER_USE
 
     task_id = str(uuid.uuid4())
     _tasks[task_id] = {"status": "processing"}
