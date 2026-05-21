@@ -10,7 +10,6 @@ from datetime import datetime, date
 from pathlib import Path
 from typing import Optional
 import requests
-from passlib.context import CryptContext
 from jose import JWTError, jwt
 from fastapi import FastAPI, Request, UploadFile, File, Form, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
@@ -71,13 +70,13 @@ def init_db():
     conn.close()
 
 # === 密码和 JWT ===
-pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
+import hashlib
 
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
 
-def get_password_hash(password):
-    return pwd_context.hash(password)
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return hash_password(plain_password) == hashed_password
 
 def create_access_token(data: dict):
     to_encode = data.copy()
@@ -194,7 +193,7 @@ async def register(request: Request):
     now = datetime.utcnow().isoformat()
     conn.execute(
         "INSERT INTO users (id, username, password_hash, credits, is_admin, last_login_date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (user_id, username, get_password_hash(password), INITIAL_CREDITS, 0, date.today().isoformat(), now)
+        (user_id, username, hash_password(password), INITIAL_CREDITS, 0, date.today().isoformat(), now)
     )
 
     # 标记邀请码已使用
