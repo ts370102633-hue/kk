@@ -29,6 +29,13 @@ def _do_clone(task_id: str, file_bytes: bytes, filename: str, content_type: str 
         # 克隆
         resp = requests.post(f"{API_BASE}/audio/voices", headers=HEADERS,
             json={"file_id": file_id, "model": MODEL}, timeout=60)
+        if resp.status_code == 400:
+            error_msg = resp.json().get("error", {}).get("message", "未知错误")
+            if "CER_NOT_PASS" in error_msg:
+                _tasks[task_id] = {"status": "error", "error": "音频中没有检测到清晰人声，请上传包含清晰说话声的录音（5-30秒）"}
+            else:
+                _tasks[task_id] = {"status": "error", "error": f"克隆失败: {error_msg}"}
+            return
         resp.raise_for_status()
         step_voice_id = resp.json()["id"]
         # 生成示例
