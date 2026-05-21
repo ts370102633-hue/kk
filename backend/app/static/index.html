@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StepAudio 声音工作室</title>
+<script defer src="https://cdn.vercel-insights.com/v1/script.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#1e293b;padding:24px;max-width:800px;margin:0 auto}
@@ -740,5 +741,12 @@ if (currentToken) {
   showAuthPage();
 }
 </script>
+
+<!-- Vercel Web Analytics -->
+<script type="module">
+  import { inject } from 'https://cdn.jsdelivr.net/npm/@vercel/analytics@2.0.1/+esm';
+  inject();
+</script>
+
 </body>
 </html>

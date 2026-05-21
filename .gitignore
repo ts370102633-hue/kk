@@ -5,3 +5,4 @@ __pycache__/
 data/
 .env
 .DS_Store
+node_modules/
