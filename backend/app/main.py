@@ -37,6 +37,8 @@ MODEL = settings.step_tts_model
 ADMIN_USERNAME = settings.admin_username.strip() or "admin"
 ADMIN_PASSWORD = settings.admin_password
 DEFAULT_ADMIN_PASSWORD = "admin123"
+PASSWORD_HASH_SCHEME = "pbkdf2_sha256"
+PASSWORD_HASH_ITERATIONS = 390000
 INITIAL_CREDITS = 100
 DAILY_BONUS = 10
 COST_PER_USE = 1
@@ -64,10 +66,52 @@ _video_submission_lock = threading.Lock()
 
 # === 密码 ===
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+    salt = os.urandom(16).hex()
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt.encode("utf-8"),
+        PASSWORD_HASH_ITERATIONS,
+    ).hex()
+    return f"{PASSWORD_HASH_SCHEME}${PASSWORD_HASH_ITERATIONS}${salt}${digest}"
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return hmac.compare_digest(hash_password(plain_password), hashed_password)
+    if hashed_password.startswith(f"{PASSWORD_HASH_SCHEME}$"):
+        try:
+            _, iterations_raw, salt, expected = hashed_password.split("$", 3)
+            iterations = int(iterations_raw)
+        except ValueError:
+            return False
+        digest = hashlib.pbkdf2_hmac(
+            "sha256",
+            plain_password.encode("utf-8"),
+            salt.encode("utf-8"),
+            iterations,
+        ).hex()
+        return hmac.compare_digest(digest, expected)
+
+    # Backward compatibility for existing local installs created before v0.1.1.
+    legacy_sha256 = hashlib.sha256(plain_password.encode()).hexdigest()
+    return hmac.compare_digest(legacy_sha256, hashed_password)
+
+
+def _needs_password_rehash(hashed_password: str) -> bool:
+    if not hashed_password.startswith(f"{PASSWORD_HASH_SCHEME}$"):
+        return True
+    try:
+        _, iterations_raw, _, _ = hashed_password.split("$", 3)
+        return int(iterations_raw) < PASSWORD_HASH_ITERATIONS
+    except ValueError:
+        return True
+
+
+def _cors_origins() -> list[str]:
+    raw = settings.cors_origins.strip()
+    if raw:
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
+    if settings.app_env == "local":
+        return ["*"]
+    return []
 
 def get_stepaudio_headers() -> dict:
     api_key = get_settings().step_api_key.strip()
@@ -883,7 +927,13 @@ def _do_tts(task_id: str, step_voice_id: str, text: str, instruction: str):
 
 # === FastAPI ===
 app = FastAPI(title="StepAudio Voice Studio")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins(),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 _static_dir = Path(__file__).parent / "static"
 
@@ -942,6 +992,8 @@ async def login(request: Request):
         raise HTTPException(401, "用户名或密码错误")
     if not verify_password(password, user["password_hash"]):
         raise HTTPException(401, "用户名或密码错误")
+    if _needs_password_rehash(user["password_hash"]):
+        user = store.update_user(username, password_hash=hash_password(password))
 
     today = date.today().isoformat()
     if user["last_login_date"] != today:

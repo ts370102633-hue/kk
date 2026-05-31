@@ -1,166 +1,213 @@
 # StepAudio Voice Studio
 
-StepAudio Voice Studio is a self-hosted AI voice workflow app for authorized voice assets. It helps small content teams and developers upload audio or video samples, extract speech, create voice assets, generate TTS audio, and keep a local audit trail for users, credits, and jobs.
+[![CI](https://github.com/ts370102633-hue/stepaudio-voice-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/ts370102633-hue/stepaudio-voice-studio/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
-The project is designed as a transparent alternative to closed internal voice-cloning tools. It is not intended for impersonation, unauthorized scraping, or use of voices or media without permission.
+StepAudio Voice Studio is a self-hosted AI voice workflow app for authorized voice assets. It helps small content teams and developers upload approved audio or video samples, extract reference speech, create voice assets, generate TTS audio, and keep local audit records for users, credits, jobs, and generated files.
+
+The project exists for teams that need a transparent alternative to closed internal voice automation tools. It is designed around consent, operator visibility, environment-based secret management, and self-hosted persistence.
+
+This project is not intended for impersonation, unauthorized voice cloning, scraping, DRM bypass, paywall bypass, or rehosting media without rights.
+
+![Workflow diagram](./docs/assets/workflow.svg)
+
+## Why This Exists
+
+Most voice-cloning products are closed systems: teams upload sensitive speaker material, generate audio, and then have limited visibility into storage, access, deletion, or audit behavior.
+
+This repository provides an open reference implementation for a safer internal workflow:
+
+- keep voice samples and generated output in operator-controlled storage
+- require explicit consent before voice creation
+- separate normal users from administrators
+- persist job history instead of losing records on deploy
+- keep provider API keys in environment variables, not source code
+- document security and compliance responsibilities clearly
 
 ## Features
 
 - Voice sample upload from audio or video files
 - Automatic reference-audio preprocessing and speech segment selection
-- StepAudio voice cloning through configurable cloud API credentials
+- StepAudio / StepFun API integration for ASR, voice clone, and TTS
 - TTS generation with task history and downloadable audio
-- Voice library with ownership and admin access checks
-- Video audio extraction and transcript parsing for authorized media workflows
-- Optional video retrieval providers for user-owned or authorized source links
+- Voice library with owner/admin access checks
 - User accounts, invite codes, credits, and admin password management
-- Persistent SQLite storage for users, tasks, settings, and video records
-- Admin-managed platform cookies and provider diagnostics
-- Docker, Render, and Linux deployment examples
+- Persistent SQLite storage for users, tasks, settings, voice records, and video records
+- Admin-managed platform cookies with masked previews
+- Video/audio workflow hooks for authorized source media
+- Queue-style video download processing with concurrency limits and failure reasons
+- Production deployment notes for Linux, systemd, Nginx, HTTPS, and backups
+- CI workflow and security-focused unit tests
 
-## Intended Use
+## Intended Users
 
-This project is for teams that need a self-hosted voice production workflow where operators can manage authorized voice samples and generated audio in one place.
+This project is useful for:
 
-Good use cases include:
+- content teams building an internal voiceover workflow
+- developers who want a self-hosted voice asset management template
+- teams that need auditable consent-based voice production
+- maintainers experimenting with queue, storage, auth, and provider integration patterns
+- organizations that prefer transparent infrastructure over opaque hosted voice tools
 
-- Creating internal voice assets from speakers who have given permission
-- Turning approved source media into internal draft voiceover material
-- Managing TTS jobs for short-form content production
-- Auditing who created a voice asset or generated audio
-- Experimenting with queue, storage, and provider integrations in an open codebase
+## Current Status
 
-Do not use this project to clone a voice without consent, bypass platform controls, rehost copyrighted media without rights, or evade provider usage limits.
+The project is pre-1.0 and production-capable for small internal teams that understand the operator responsibilities in [SECURITY.md](./SECURITY.md).
+
+Recommended production posture:
+
+- deploy behind HTTPS
+- set a strong admin password
+- keep SQLite and generated files outside the code checkout
+- back up both database and file storage
+- rotate any API key that has ever been exposed
+- use only authorized voice samples and media sources
 
 ## Architecture
 
 ```text
 Browser UI
   |
-FastAPI app
+FastAPI application
   |
-SQLite persistent store
+Persistent SQLite store
   |
-Local file storage
+Local generated-file storage
   |
 External providers
-  |- StepAudio / StepFun API for ASR, voice clone, and TTS
-  |- Optional authorized video/media providers
+  |- StepAudio / StepFun for ASR, voice clone, and TTS
+  |- Optional licensed media retrieval providers
 ```
 
-The default deployment stores application data outside the code checkout:
+The default production deployment keeps runtime data outside the repository:
 
 ```text
 DATABASE_URL=sqlite:////var/lib/stepaudio/stepaudio.db
 LOCAL_STORAGE_DIR=/var/lib/stepaudio/files
 ```
 
+See [Architecture](./docs/architecture.md) for more detail.
+
 ## Quick Start
 
-1. Create a virtual environment.
+Use Python 3.11 or 3.12. Python 3.14 is not recommended for this dependency set yet because several native Python packages may not publish wheels for it.
 
 ```bash
-python3 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-```
-
-2. Create local environment config.
-
-```bash
 cp .env.example .env
 ```
 
-3. Edit `.env`.
-
-At minimum, set:
+Edit `.env`:
 
 ```bash
 STEP_API_KEY=your_stepaudio_api_key
 ADMIN_PASSWORD=change-this-before-use
+APP_ENV=local
 ```
 
-4. Run the app.
+Run verification:
+
+```bash
+./init.sh
+```
+
+Start the app:
 
 ```bash
 ./start.sh
 ```
 
-The default local URL is:
+Open:
 
 ```text
 http://localhost:8808
 ```
 
-## Required Environment Variables
+For a full walkthrough, see [Quickstart](./docs/quickstart.md).
+
+## Environment Variables
 
 | Variable | Purpose |
 | --- | --- |
-| `STEP_API_KEY` | StepAudio / StepFun API key. Required for clone, ASR, and TTS. |
-| `ADMIN_PASSWORD` | Initial admin password. Required in production. |
-| `DATABASE_URL` | SQLite database URL. |
-| `LOCAL_STORAGE_DIR` | Directory for generated files and downloads. |
+| `APP_ENV` | Use `local` for development and `production` for deployed servers. |
+| `DATABASE_URL` | SQLite database URL. Use an absolute path in production. |
+| `LOCAL_STORAGE_DIR` | Directory for generated audio, uploads, and downloaded files. |
+| `CORS_ORIGINS` | Comma-separated production browser origins. Empty means same-origin only. |
+| `STEP_API_KEY` | StepAudio / StepFun API key for clone, ASR, and TTS. |
 | `STEP_API_BASE` | StepAudio plan API base URL. |
 | `STEP_FILE_API_BASE` | StepFun file API base URL. |
 | `STEP_ASR_MODEL` | ASR model name. |
 | `STEP_TTS_MODEL` | TTS model name. |
+| `ADMIN_USERNAME` | Initial administrator username. |
+| `ADMIN_PASSWORD` | Initial administrator password. Must be changed for production. |
 
-Optional variables for media retrieval and diagnostics are documented in [.env.example](./.env.example) and [DEPLOYMENT.md](./DEPLOYMENT.md).
+Optional variables for authorized media retrieval and diagnostics are documented in [.env.example](./.env.example) and [Deployment](./DEPLOYMENT.md).
 
-## Deployment
+## Documentation
 
-For a Linux server deployment, see [DEPLOYMENT.md](./DEPLOYMENT.md).
-
-The deployment guide covers:
-
-- persistent database and file paths
-- environment file setup
-- systemd service setup
-- Nginx/HTTPS placement
-- production checks
-- video-provider configuration
+- [Quickstart](./docs/quickstart.md)
+- [Architecture](./docs/architecture.md)
+- [Consent and safety model](./docs/consent-and-safety.md)
+- [Deployment notes](./DEPLOYMENT.md)
+- [Maintenance guide](./docs/maintenance.md)
+- [Roadmap](./docs/roadmap.md)
+- [Codex for Open Source application draft](./docs/codex-for-oss-application.md)
 
 ## Security And Compliance
 
-Voice cloning and media retrieval have meaningful abuse and compliance risks. This project expects operators to enforce consent, source-media rights, and provider terms.
+Voice cloning has meaningful abuse risk. Operators must only process speakers and media they are authorized to use.
 
-Baseline protections included in the app:
+Included safeguards:
 
-- API keys are read from environment variables, not source code
+- API keys are loaded from environment variables
 - production startup rejects the default admin password
 - admin password can be changed in the UI
-- user and task records are persisted
-- video and audio download endpoints enforce owner/admin checks
-- platform cookies are admin-only settings
+- password hashes use salted PBKDF2, with backward-compatible migration for older local installs
+- production CORS defaults to same-origin only unless `CORS_ORIGINS` is set
+- users can only access their own voice, TTS, and video records unless they are administrators
+- generated audio and video download endpoints enforce owner/admin checks
+- platform cookies are admin-only settings and API responses only expose masked previews
 
-Still required before public or production use:
+See [SECURITY.md](./SECURITY.md) and [Consent and safety model](./docs/consent-and-safety.md).
 
-- rotate any API key that has ever been committed, pasted, or exposed
-- configure strong `ADMIN_PASSWORD`
-- review CORS and network exposure for your deployment
-- add external backups for the SQLite database and generated files
-- document speaker consent and deletion workflows for your team
+## Development
 
-See [SECURITY.md](./SECURITY.md) for vulnerability reporting and operator guidance.
+Install development dependencies:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+Run checks:
+
+```bash
+python -m compileall -q backend/app
+python -m pytest -q
+```
+
+The GitHub Actions workflow runs the same checks on Python 3.11 and 3.12.
 
 ## Roadmap
 
-- Dedicated worker process for long-running clone, ASR, and TTS jobs
-- Docker Compose deployment with persistent volume examples
-- Object storage backend for generated files
-- Consent audit export
-- Role-based access control beyond admin/user
-- Provider plugin interface for media retrieval
-- Automated tests for FastAPI routes and storage behavior
-- Release workflow and changelog automation
+The short-term roadmap is focused on maintainability and safe operations:
+
+- background worker process for long-running clone, ASR, and TTS jobs
+- consent audit export
+- Docker Compose deployment example
+- object storage backend for generated files
+- role-based access control beyond admin/user
+- broader FastAPI route tests
+- release automation and changelog workflow
+
+Open roadmap issues are tracked in GitHub Issues and summarized in [Roadmap](./docs/roadmap.md).
 
 ## Contributing
 
-Contributions are welcome when they improve safety, maintainability, documentation, deployment reliability, or authorized voice workflows.
+Contributions are welcome when they improve safety, maintainability, documentation, deployment reliability, tests, or authorized voice workflows.
 
-Start with [CONTRIBUTING.md](./CONTRIBUTING.md).
+Start with [CONTRIBUTING.md](./CONTRIBUTING.md). Please do not submit changes that bypass provider access controls, hide paid provider usage, or enable unauthorized voice cloning.
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](./LICENSE).
-
+MIT. See [LICENSE](./LICENSE).

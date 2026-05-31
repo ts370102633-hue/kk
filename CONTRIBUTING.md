@@ -17,9 +17,9 @@ This project is focused on safe, self-hosted voice workflows for authorized medi
 ## Local Development
 
 ```bash
-python3 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 cp .env.example .env
 ```
 
@@ -29,6 +29,7 @@ Run verification:
 
 ```bash
 ./init.sh
+python -m pytest -q
 ```
 
 Run the app:
@@ -46,6 +47,7 @@ Before opening a PR:
 - update documentation for operator-visible behavior
 - add or update tests when touching shared behavior
 - run `./init.sh`
+- run `python -m pytest -q` when development dependencies are installed
 - explain any provider/API behavior that may cost money or consume quota
 
 ## Safety Expectations
@@ -70,3 +72,11 @@ When opening an issue, include:
 
 Do not include secrets, full cookies, private media URLs, or API keys.
 
+## Documentation Standards
+
+Documentation should follow the structure used in `docs/`:
+
+- tutorials help a new user complete setup
+- how-to guides solve operational problems
+- explanations clarify safety and architecture decisions
+- reference pages document variables, providers, and release behavior

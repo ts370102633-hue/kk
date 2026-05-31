@@ -6,7 +6,7 @@ Do not store production data inside the code checkout directory.
 
 Recommended cloud server layout:
 
-- Code: `/opt/kk-studio`
+- Code: `/opt/stepaudio-voice-studio`
 - Config: `/etc/stepaudio/stepaudio.env`
 - Database: `/var/lib/stepaudio/stepaudio.db`
 - Generated/downloaded files: `/var/lib/stepaudio/files`
@@ -21,6 +21,7 @@ Create `/etc/stepaudio/stepaudio.env`:
 APP_ENV=production
 DATABASE_URL=sqlite:////var/lib/stepaudio/stepaudio.db
 LOCAL_STORAGE_DIR=/var/lib/stepaudio/files
+CORS_ORIGINS=https://your-domain.example
 STEP_API_KEY=your_stepaudio_api_key
 STEP_API_BASE=https://api.stepfun.com/step_plan/v1
 STEP_FILE_API_BASE=https://api.stepfun.com/v1
@@ -88,7 +89,23 @@ curl http://127.0.0.1:8000/health
 ls -lh /var/lib/stepaudio/stepaudio.db
 ```
 
-The database file must stay in `/var/lib/stepaudio`, not inside `/opt/kk-studio`.
+The database file must stay in `/var/lib/stepaudio`, not inside `/opt/stepaudio-voice-studio`.
+
+## CORS
+
+In local development the app allows wildcard CORS so tools and browser previews are easy to run.
+
+In production, leave `CORS_ORIGINS` set to the public HTTPS origin that users open in their browser:
+
+```bash
+CORS_ORIGINS=https://voice.example.com
+```
+
+For multiple controlled origins, use a comma-separated list:
+
+```bash
+CORS_ORIGINS=https://voice.example.com,https://admin.example.com
+```
 
 ## Optional Video Quality Cookies
 

@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     app_env: str = "local"
     database_url: str = "sqlite:///./data/stepaudio.db"
     local_storage_dir: str = "./data"
+    cors_origins: str = ""
 
     openvoice_output_dir: str = "/tmp/openvoice_outputs"
     max_upload_mb: int = 500

@@ -31,8 +31,18 @@ Before production use:
 - set a strong `ADMIN_PASSWORD`
 - restrict admin access to trusted operators
 - configure HTTPS in front of the app
+- set `CORS_ORIGINS` to the public HTTPS origin of the deployed app
 - back up the database and generated file storage
 - review provider terms for all configured media and AI APIs
+
+## Implemented Baseline Controls
+
+- New password hashes use salted PBKDF2.
+- Legacy SHA256 password hashes from earlier local installs still verify and are upgraded after successful login.
+- Production CORS defaults to same-origin only unless `CORS_ORIGINS` is configured.
+- Production startup rejects the default admin password.
+- Generated audio and video file downloads require authentication and owner/admin access.
+- Admin-managed cookies are stored as application settings and only masked previews are returned to the UI.
 
 ## Voice Consent Requirements
 
@@ -67,4 +77,3 @@ If a secret is exposed:
 3. Confirm it is not present in current source files.
 4. Assume old Git history, screenshots, and chat logs may remain compromised.
 5. Review provider usage logs for unexpected spend or abuse.
-
