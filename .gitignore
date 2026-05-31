@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+*.db
+data/
+.env
+.DS_Store
+AGENTS.md
+feature_list.json
+progress.md
+session-handoff.md
+verification.md

@@ -1,0 +1,1623 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StepAudio 声音工作室</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#1e293b;padding:24px;max-width:800px;margin:0 auto}
+h1{font-size:24px;font-weight:700;margin-bottom:8px}
+h2{font-size:18px;font-weight:600;margin-bottom:12px}
+.sub{color:#64748b;font-size:14px;margin-bottom:24px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:24px;margin-bottom:16px}
+label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+input,select,textarea{width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:12px;font-size:14px;margin-bottom:14px}
+textarea{min-height:80px;resize:vertical}
+input[type=file]{padding:16px;border-style:dashed;background:#f8fafc}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn{background:#0f172a;color:#fff;border:none;padding:12px 24px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;width:100%;transition:all 0.2s}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn2{background:#0f172a;color:#fff;border:none;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-outline{background:transparent;color:#0f172a;border:1px solid #0f172a;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-del{background:none;border:1px solid #e2e8f0;color:#94a3b8;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;margin-left:8px}
+.btn-del:hover{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:600}
+.badge-active{background:#d1fae5;color:#065f46}
+.badge-admin{background:#fef3c7;color:#92400e}
+.err{background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px;font-size:13px;color:#991b1b;margin-top:8px;white-space:pre-wrap}
+.success{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:12px;font-size:13px;color:#166534;margin-top:8px}
+.check{display:flex;align-items:flex-start;gap:8px;margin-bottom:14px;font-size:13px}
+.check input{width:auto;margin:2px 0 0 0}
+audio{width:100%;margin-top:10px}
+.tab{display:inline-block;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;margin-right:4px;transition:all 0.2s}
+.tab.active{background:#0f172a;color:#fff}
+.tab:not(.active){background:#f1f5f9;color:#64748b}
+.tab:not(.active):hover{background:#e2e8f0}
+.hidden{display:none !important}
+.progress{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin:12px 0}
+.progress-bar{height:100%;background:linear-gradient(90deg,#3b82f6,#8b5cf6);border-radius:3px;transition:width 0.3s;animation:progress-pulse 1.5s ease-in-out infinite}
+@keyframes progress-pulse{0%,100%{opacity:1}50%{opacity:.7}}
+.tag{display:inline-block;padding:4px 12px;border-radius:8px;font-size:12px;cursor:pointer;margin:0 6px 6px 0;border:1px solid #e2e8f0;background:#fff;transition:all 0.2s}
+.tag:hover{border-color:#3b82f6;color:#3b82f6}
+.tag.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
+.segmented{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.segmented button{border:1px solid #e2e8f0;background:#fff;color:#475569;padding:10px 12px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
+.segmented button.active{background:#0f172a;color:#fff;border-color:#0f172a}
+.hint{font-size:12px;color:#64748b;margin:-8px 0 14px;line-height:1.5}
+.video-mode-hint{font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;margin-top:10px;line-height:1.5}
+.voice-meta{font-size:12px;color:#64748b;line-height:1.7;margin-top:8px}
+.quality-good{background:#d1fae5;color:#065f46}
+.quality-ok{background:#fef3c7;color:#92400e}
+.quality-poor{background:#fee2e2;color:#991b1b}
+.video-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.video-actions .btn{padding:12px 10px}
+.video-actions .btn-original{background:#0891b2}
+.video-actions .btn-builtin{background:#0f172a}
+.video-actions .btn-tikhub{background:#7c3aed}
+@media(max-width:640px){.video-actions{grid-template-columns:1fr}}
+.user-bar{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:20px}
+.credits{font-weight:600;color:#059669}
+</style>
+</head>
+<body>
+
+<!-- 登录/注册页面 -->
+<div id="auth-page">
+  <div style="text-align:center;margin:60px 0 40px">
+    <h1>🎙️ StepAudio 声音工作室</h1>
+    <div class="sub">AI 声音克隆与文案朗读</div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;gap:8px;margin-bottom:20px">
+      <div class="tab active" onclick="showAuthTab('login')">登录</div>
+      <div class="tab" onclick="showAuthTab('register')">注册</div>
+    </div>
+
+    <!-- 登录表单 -->
+    <div id="login-form">
+      <label>用户名</label>
+      <input id="login-username" placeholder="请输入用户名">
+      <label>密码</label>
+      <input id="login-password" type="password" placeholder="请输入密码">
+      <div id="login-err" class="err hidden"></div>
+      <button class="btn" onclick="doLogin()">登录</button>
+    </div>
+
+    <!-- 注册表单 -->
+    <div id="register-form" class="hidden">
+      <label>用户名</label>
+      <input id="reg-username" placeholder="请输入用户名">
+      <label>密码</label>
+      <input id="reg-password" type="password" placeholder="请输入密码（至少6位）">
+      <label>邀请码</label>
+      <input id="reg-invite" placeholder="请输入管理员提供的邀请码">
+      <div id="reg-err" class="err hidden"></div>
+      <div id="reg-success" class="success hidden"></div>
+      <button class="btn" onclick="doRegister()">注册</button>
+    </div>
+  </div>
+</div>
+
+<!-- 主应用（登录后显示） -->
+<div id="app-page" class="hidden">
+  <!-- 用户信息栏 -->
+  <div class="user-bar">
+    <div>
+      <span id="user-greeting">你好</span>
+      <span id="user-admin-badge" class="badge badge-admin hidden">管理员</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <span class="credits">💰 <span id="user-credits">0</span> 积分</span>
+      <button class="btn-outline" onclick="doLogout()" style="padding:6px 12px;font-size:12px">退出</button>
+    </div>
+  </div>
+
+  <!-- 管理员面板 -->
+  <div id="admin-panel" class="hidden card" style="margin-bottom:20px;border-color:#fbbf24">
+    <h2>👑 管理员面板</h2>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn2" onclick="generateInviteCode()">生成邀请码</button>
+      <button class="btn2" onclick="loadUsers()">查看用户</button>
+      <button class="btn2" onclick="loadCodes()">查看邀请码</button>
+      <button class="btn2" onclick="showVideoCookieConfig()">平台 Cookie</button>
+      <button class="btn2" onclick="showXhs4kProbe()">小红书4K探测</button>
+      <button class="btn-outline" onclick="showPasswordForm()">修改密码</button>
+    </div>
+    <div id="admin-result"></div>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-bottom:20px">
+    <div class="tab active" onclick="showTab('voices')">声音库</div>
+    <div class="tab" onclick="showTab('speak')">文案朗读</div>
+    <div class="tab" onclick="showTab('video')">视频下载</div>
+    <div class="tab" onclick="showTab('history')">任务记录</div>
+  </div>
+
+  <!-- 声音库 -->
+  <div id="tab-voices">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div><h1>声音库</h1><div class="sub">上传录音或视频，克隆声音（每次扣 1 积分）</div></div>
+      <button class="btn2" onclick="showTab('new')">+ 上传新声音</button>
+    </div>
+    <div id="voice-list"></div>
+  </div>
+
+  <!-- 上传克隆 -->
+  <div id="tab-new" class="hidden">
+    <h1>上传录音/视频，克隆声音</h1>
+    <div class="sub">上传至少 5 秒清晰单人讲话；系统会自动挑选最佳人声片段</div>
+    <div class="card" style="margin-top:16px">
+      <label>声音名称 *</label>
+      <input id="v-name" placeholder="例如：女主播A / 老板声音">
+      <div class="row">
+        <div><label>说话人</label><input id="v-speaker" placeholder="说话人姓名"></div>
+        <div><label>部门</label><input id="v-dept" placeholder="例如：内容组"></div>
+      </div>
+      <label>音频/视频文件 *</label>
+      <input type="file" id="v-file" accept="audio/*,video/*">
+      <label>克隆模式</label>
+      <div class="segmented" id="clone-mode-tabs">
+        <button type="button" class="active" data-mode="fast" onclick="selectCloneMode(this)">快速克隆</button>
+        <button type="button" data-mode="hifi" onclick="selectCloneMode(this)">高保真克隆</button>
+      </div>
+      <input type="hidden" id="v-clone-mode" value="fast">
+      <div class="hint" id="clone-mode-hint">适合普通素材，系统会自动清理音频并选择最佳片段。</div>
+      <label>录音内容</label>
+      <textarea id="v-sample-text" placeholder="可留空；如果知道录音里说了什么，粘贴原文会更稳"></textarea>
+      <div class="check">
+        <input type="checkbox" id="v-auto-transcribe" checked>
+        <span>自动识别参考文稿</span>
+      </div>
+      <div class="check">
+        <input type="checkbox" id="v-consent">
+        <span>我确认该录音已获得本人或公司合法授权</span>
+      </div>
+      <div id="v-progress" class="hidden">
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:#64748b;margin-bottom:4px">
+          <span id="v-progress-text">正在上传...</span>
+          <span id="v-progress-pct">0%</span>
+        </div>
+        <div class="progress"><div id="v-progress-bar" class="progress-bar" style="width:0%"></div></div>
+      </div>
+      <div id="v-err" class="err hidden"></div>
+      <button class="btn" id="v-btn" onclick="uploadVoice()">开始克隆（扣 1 积分）</button>
+    </div>
+  </div>
+
+  <!-- 文案朗读 -->
+  <div id="tab-speak" class="hidden">
+    <h1>文案朗读</h1>
+    <div class="sub">选择声音，输入文案，调整风格，生成高质量语音（每次扣 1 积分）</div>
+    <div class="card" style="margin-top:16px">
+      <label>选择声音 *</label>
+      <select id="s-voice"><option value="">请选择...</option></select>
+      <label>文案标题</label>
+      <input id="s-title" placeholder="例如：产品介绍视频配音">
+      <label>文案内容 *</label>
+      <textarea id="s-text" placeholder="输入要朗读的文案..."></textarea>
+
+      <label>朗读风格</label>
+      <div id="style-tags" style="margin-bottom:14px">
+        <span class="tag active" data-style="情绪高昂、积极向上、充满活力" onclick="selectStyle(this)">🎯 积极昂扬</span>
+        <span class="tag" data-style="温柔轻柔、亲切自然" onclick="selectStyle(this)">🌸 温柔亲切</span>
+        <span class="tag" data-style="沉着冷静、稳重大气" onclick="selectStyle(this)">🧊 沉着冷静</span>
+        <span class="tag" data-style="激情澎湃、充满感染力" onclick="selectStyle(this)">🔥 激情澎湃</span>
+        <span class="tag" data-style="轻松愉快、幽默风趣" onclick="selectStyle(this)">😄 轻松幽默</span>
+        <span class="tag" data-style="专业严谨、播音腔" onclick="selectStyle(this)">🎙️ 专业播音</span>
+        <span class="tag" data-style="用原声自然语气，不做作" onclick="selectStyle(this)">🎵 纯原声</span>
+      </div>
+      <label>自定义风格描述（可选）</label>
+      <input id="s-custom-style" placeholder="例如：像讲故事一样娓娓道来，带一点神秘感">
+
+      <div id="s-progress" class="hidden">
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:#64748b;margin-bottom:4px">
+          <span id="s-progress-text">正在生成语音...</span>
+          <span id="s-progress-pct">0%</span>
+        </div>
+        <div class="progress"><div id="s-progress-bar" class="progress-bar" style="width:0%"></div></div>
+      </div>
+      <div id="s-err" class="err hidden"></div>
+      <button class="btn" id="s-btn" onclick="createTTS()">生成语音（扣 1 积分）</button>
+    </div>
+    <div id="tts-result" class="hidden" style="margin-top:16px">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong>生成结果</strong>
+          <button class="btn-del" onclick="document.getElementById('tts-result').classList.add('hidden')">关闭</button>
+        </div>
+        <audio id="tts-audio" controls style="margin-top:10px"></audio>
+        <div id="tts-meta" class="voice-meta"></div>
+        <button class="btn2" id="tts-download-btn" onclick="downloadTaskAudio(this.dataset.taskId, this.dataset.title, this)" style="background:#059669;margin-top:10px">下载音频</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 视频下载 -->
+  <div id="tab-video" class="hidden">
+    <h1>视频下载</h1>
+    <div class="sub">支持抖音、小红书、B站视频下载（每次扣 1 积分）</div>
+    <div class="card" style="margin-top:16px">
+      <label>粘贴链接或分享文本</label>
+      <textarea id="video-url" placeholder="粘贴抖音、小红书或B站的链接或分享文本..." style="min-height:60px"></textarea>
+      <div id="video-progress" class="hidden">
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:#64748b;margin-bottom:4px">
+          <span id="video-progress-text">正在解析链接...</span>
+          <span id="video-progress-pct">0%</span>
+        </div>
+        <div class="progress"><div id="video-progress-bar" class="progress-bar" style="width:0%"></div></div>
+      </div>
+      <div id="video-err" class="err hidden"></div>
+      <div class="video-actions">
+        <button class="btn btn-original video-mode-btn" onclick="downloadVideo('original', this)">原视频接口（扣 1 积分）</button>
+        <button class="btn btn-builtin video-mode-btn" onclick="downloadVideo('builtin', this)">自建解析（扣 1 积分）</button>
+        <button class="btn btn-tikhub video-mode-btn" onclick="downloadVideo('tikhub', this)">TikHub付费（扣 1 积分）</button>
+      </div>
+      <div class="video-mode-hint">小红书 4K 优先用「原视频接口」；TikHub 小红书目前多为 1080P，适合对照测试。抖音 4K 继续用 TikHub。</div>
+    </div>
+    <div id="video-result" class="hidden" style="margin-top:16px">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong id="video-result-title">下载完成</strong>
+          <button class="btn-del" onclick="document.getElementById('video-result').classList.add('hidden')">关闭</button>
+        </div>
+        <div id="video-result-desc" style="font-size:13px;color:#64748b;margin-top:6px"></div>
+        <div id="video-result-info" style="font-size:12px;color:#94a3b8;margin-top:4px"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn" id="video-download-btn" onclick="downloadVideoFile()" style="background:#059669">下载到本地</button>
+          <button class="btn" id="video-asr-btn" onclick="transcribeVideo()" style="background:#8b5cf6">解析文案</button>
+          <button class="btn" id="video-tts-btn" onclick="useForTTS()" style="background:#3b82f6">用这段文案朗读</button>
+        </div>
+      </div>
+    </div>
+    <div id="video-history" style="margin-top:20px">
+      <h2>下载记录（最近30条）</h2>
+      <div id="video-history-list"></div>
+    </div>
+  </div>
+
+  <!-- 任务记录 -->
+  <div id="tab-history" class="hidden">
+    <h1>任务记录</h1>
+    <div class="sub">历史生成记录（最多保留 30 条）</div>
+    <div id="history-list"></div>
+  </div>
+</div>
+
+<script>
+const API = '';
+let currentToken = localStorage.getItem('token') || null;
+let currentUser = null;
+let serverVoices = [];
+
+// === API 请求封装 ===
+async function apiFetch(url, options = {}) {
+  if (currentToken) {
+    options.headers = options.headers || {};
+    options.headers['Authorization'] = 'Bearer ' + currentToken;
+  }
+  const res = await fetch(API + url, options);
+  if (res.status === 401) {
+    currentToken = null;
+    currentUser = null;
+    serverVoices = [];
+    localStorage.removeItem('token');
+    showAuthPage();
+    throw new Error('登录已过期，请重新登录');
+  }
+  return res;
+}
+
+// === 认证相关 ===
+function showAuthTab(name) {
+  document.getElementById('login-form').classList.toggle('hidden', name !== 'login');
+  document.getElementById('register-form').classList.toggle('hidden', name !== 'register');
+  document.querySelectorAll('#auth-page .tab').forEach(el => {
+    el.classList.toggle('active', el.textContent.includes(name === 'login' ? '登录' : '注册'));
+  });
+}
+
+function showAuthPage() {
+  document.getElementById('auth-page').classList.remove('hidden');
+  document.getElementById('app-page').classList.add('hidden');
+}
+
+async function showAppPage() {
+  document.getElementById('auth-page').classList.add('hidden');
+  document.getElementById('app-page').classList.remove('hidden');
+  await loadUserInfo();
+  await loadServerVoices();
+  renderVoices();
+}
+
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-err');
+  errEl.classList.add('hidden');
+
+  if (!username || !password) {
+    errEl.textContent = '请输入用户名和密码';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  try {
+    const res = await fetch(API + '/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.detail || '登录失败');
+    }
+    const data = await res.json();
+    currentToken = data.token;
+    localStorage.setItem('token', currentToken);
+    showAppPage();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function doRegister() {
+  const username = document.getElementById('reg-username').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const inviteCode = document.getElementById('reg-invite').value.trim();
+  const errEl = document.getElementById('reg-err');
+  const successEl = document.getElementById('reg-success');
+  errEl.classList.add('hidden');
+  successEl.classList.add('hidden');
+
+  if (!username || !password || !inviteCode) {
+    errEl.textContent = '请填写所有字段';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  try {
+    const res = await fetch(API + '/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, invite_code: inviteCode })
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.detail || '注册失败');
+    }
+    const data = await res.json();
+    currentToken = data.token;
+    localStorage.setItem('token', currentToken);
+    successEl.textContent = `注册成功！获得 ${data.credits} 积分`;
+    successEl.classList.remove('hidden');
+    setTimeout(() => showAppPage(), 1000);
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+function doLogout() {
+  currentToken = null;
+  currentUser = null;
+  serverVoices = [];
+  localStorage.removeItem('token');
+  showAuthPage();
+}
+
+// === 用户信息 ===
+async function loadUserInfo() {
+  try {
+    const res = await apiFetch('/api/me');
+    if (res.ok) {
+      currentUser = await res.json();
+      document.getElementById('user-greeting').textContent = `你好，${currentUser.username}`;
+      document.getElementById('user-credits').textContent = currentUser.credits;
+      document.getElementById('user-admin-badge').classList.toggle('hidden', !currentUser.is_admin);
+      document.getElementById('admin-panel').classList.toggle('hidden', !currentUser.is_admin);
+    }
+  } catch (e) { console.error(e); }
+}
+
+// === 管理员功能 ===
+async function generateInviteCode() {
+  try {
+    const res = await apiFetch('/api/admin/generate-code', { method: 'POST' });
+    if (res.ok) {
+      const data = await res.json();
+      document.getElementById('admin-result').innerHTML = `
+        <div class="success">
+          新邀请码：<strong style="font-size:18px;letter-spacing:2px">${data.code}</strong>
+          <br><small>分享给用户用于注册</small>
+        </div>`;
+    }
+  } catch (e) { alert(e.message); }
+}
+
+async function loadUsers() {
+  try {
+    const res = await apiFetch('/api/admin/users');
+    if (res.ok) {
+      const users = await res.json();
+      let html = '<div class="card"><h2>用户列表</h2><table style="width:100%;font-size:13px"><tr style="text-align:left"><th>用户名</th><th>积分</th><th>角色</th><th>操作</th></tr>';
+      users.forEach(u => {
+        html += `<tr>
+          <td>${esc(u.username)}</td>
+          <td>${u.credits}</td>
+          <td>${u.is_admin ? '管理员' : '用户'}</td>
+          <td><button class="btn-del" onclick="editCredits('${esc(u.username)}', ${u.credits})">修改积分</button></td>
+        </tr>`;
+      });
+      html += '</table></div>';
+      document.getElementById('admin-result').innerHTML = html;
+    }
+  } catch (e) { alert(e.message); }
+}
+
+async function editCredits(username, currentCredits) {
+  const newCredits = prompt(`修改 ${username} 的积分（当前: ${currentCredits}）`, currentCredits);
+  if (newCredits === null || isNaN(newCredits)) return;
+  try {
+    const res = await apiFetch('/api/admin/update-credits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, credits: parseInt(newCredits) })
+    });
+    if (res.ok) {
+      loadUsers();
+      loadUserInfo(); // 刷新当前用户积分
+    }
+  } catch (e) { alert(e.message); }
+}
+
+async function loadCodes() {
+  try {
+    const res = await apiFetch('/api/admin/codes');
+    if (res.ok) {
+      const codes = await res.json();
+      let html = '<div class="card"><h2>邀请码列表</h2><table style="width:100%;font-size:13px"><tr style="text-align:left"><th>邀请码</th><th>状态</th><th>创建时间</th></tr>';
+      codes.forEach(c => {
+        html += `<tr><td><strong>${c.code}</strong></td><td>${c.is_used ? '已使用' : '未使用'}</td><td>${new Date(c.created_at).toLocaleDateString('zh-CN')}</td></tr>`;
+      });
+      html += '</table></div>';
+      document.getElementById('admin-result').innerHTML = html;
+    }
+  } catch (e) { alert(e.message); }
+}
+
+function cookieStatusText(status) {
+  if (!status || !status.configured) return '未配置';
+  const source = status.source === 'env' ? '环境变量' : '后台配置';
+  const time = status.updated_at ? `，更新: ${new Date(status.updated_at).toLocaleString('zh-CN')}` : '';
+  return `${source}，长度 ${status.length}，${status.preview}${time}`;
+}
+
+async function showVideoCookieConfig() {
+  document.getElementById('admin-result').innerHTML = `
+    <div class="card">
+      <h2>平台 Cookie 配置</h2>
+      <div class="sub" style="margin-bottom:14px">只允许管理员配置。可粘贴完整 Cookie 请求头，也可直接粘贴 Netscape Cookie 导出文件内容；系统会自动转换并只保存对应平台域名的 Cookie。</div>
+      <label>小红书 Cookie</label>
+      <div id="xhs-cookie-status" style="font-size:12px;color:#64748b;margin-bottom:6px">读取中...</div>
+      <textarea id="admin-xhs-cookie" placeholder="粘贴新的小红书 Cookie 请求头，或 Netscape Cookie 导出内容；留空保存则不修改"></textarea>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="btn2" onclick="saveVideoCookie('xhs')">保存小红书</button>
+        <button class="btn-outline" onclick="testVideoCookie('xhs')">测试小红书</button>
+        <button class="btn-del" onclick="clearVideoCookie('xhs')">清空</button>
+      </div>
+      <label>抖音 Cookie</label>
+      <div id="douyin-cookie-status" style="font-size:12px;color:#64748b;margin-bottom:6px">读取中...</div>
+      <textarea id="admin-douyin-cookie" placeholder="粘贴新的抖音 Cookie 请求头，或 Netscape Cookie 导出内容；留空保存则不修改"></textarea>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="btn2" onclick="saveVideoCookie('douyin')">保存抖音</button>
+        <button class="btn-outline" onclick="testVideoCookie('douyin')">测试抖音</button>
+        <button class="btn-del" onclick="clearVideoCookie('douyin')">清空</button>
+      </div>
+      <div id="video-cookie-result"></div>
+    </div>`;
+  await loadVideoCookieStatus();
+}
+
+async function loadVideoCookieStatus() {
+  const res = await apiFetch('/api/admin/video-cookies');
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || '读取 Cookie 状态失败');
+  document.getElementById('xhs-cookie-status').textContent = cookieStatusText(data.xhs);
+  document.getElementById('douyin-cookie-status').textContent = cookieStatusText(data.douyin);
+}
+
+async function saveVideoCookie(platform) {
+  const fieldId = platform === 'xhs' ? 'admin-xhs-cookie' : 'admin-douyin-cookie';
+  const value = document.getElementById(fieldId).value.trim();
+  const resultEl = document.getElementById('video-cookie-result');
+  resultEl.innerHTML = '';
+  if (!value) {
+    resultEl.innerHTML = '<div class="err">粘贴新的 Cookie 后再保存；如果要删除，请点清空。</div>';
+    return;
+  }
+  const payload = {};
+  payload[platform + '_cookie'] = value;
+  try {
+    const res = await apiFetch('/api/admin/video-cookies', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || '保存失败');
+    document.getElementById(fieldId).value = '';
+    await loadVideoCookieStatus();
+    resultEl.innerHTML = '<div class="success">已保存，后续小红书/抖音下载会优先带登录态解析。</div>';
+  } catch (e) {
+    resultEl.innerHTML = `<div class="err">${esc(e.message)}</div>`;
+  }
+}
+
+async function clearVideoCookie(platform) {
+  if (!confirm('确定清空这个平台的 Cookie？清空后会回到匿名解析。')) return;
+  const payload = {};
+  payload[platform + '_cookie'] = '';
+  const resultEl = document.getElementById('video-cookie-result');
+  try {
+    const res = await apiFetch('/api/admin/video-cookies', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || '清空失败');
+    await loadVideoCookieStatus();
+    resultEl.innerHTML = '<div class="success">已清空。</div>';
+  } catch (e) {
+    resultEl.innerHTML = `<div class="err">${esc(e.message)}</div>`;
+  }
+}
+
+async function testVideoCookie(platform) {
+  const resultEl = document.getElementById('video-cookie-result');
+  resultEl.innerHTML = '<div class="success">正在测试...</div>';
+  try {
+    const res = await apiFetch('/api/admin/video-cookies/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ platform })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || '测试失败');
+    const cls = data.ok ? 'success' : 'err';
+    const status = data.status_code ? `HTTP ${data.status_code}` : '';
+    const hint = data.login_hint ? '，页面出现登录/验证提示' : '';
+    resultEl.innerHTML = `<div class="${cls}">${esc(platform)} 测试结果：${status} ${esc(data.message || '')}${hint}</div>`;
+  } catch (e) {
+    resultEl.innerHTML = `<div class="err">${esc(e.message)}</div>`;
+  }
+}
+
+function showXhs4kProbe() {
+  document.getElementById('admin-result').innerHTML = `
+    <div class="card">
+      <h2>小红书 4K 接口探测</h2>
+      <div class="sub" style="margin-bottom:14px">每次只调用你选择的一个接口，不会自动批量扫描。TikHub 选项会产生 TikHub 调用；原视频接口会消耗原视频接口额度。</div>
+      <label>小红书分享链接</label>
+      <textarea id="xhs-probe-url" placeholder="粘贴小红书分享文本或链接"></textarea>
+      <label>探测接口</label>
+      <select id="xhs-probe-provider">
+        <option value="original">原视频接口 xhshdvideo（已验证可能出 4K）</option>
+        <option value="tikhub_app_v2">TikHub App V2 get_video_note_detail（当前多为 1080P）</option>
+        <option value="tikhub_app_v1">TikHub App V1 get_video_note_info（待验证）</option>
+        <option value="tikhub_web_v4">TikHub Web V4 get_note_info_v4（待验证）</option>
+        <option value="tikhub_web_v5_cookie">TikHub Web V5 自带 Cookie（已测样本无视频）</option>
+      </select>
+      <button class="btn" onclick="runXhs4kProbe(this)">开始探测这个接口</button>
+      <div id="xhs-probe-result"></div>
+    </div>`;
+}
+
+async function runXhs4kProbe(btn) {
+  const url = document.getElementById('xhs-probe-url').value.trim();
+  const provider = document.getElementById('xhs-probe-provider').value;
+  const resultEl = document.getElementById('xhs-probe-result');
+  if (!url) {
+    resultEl.innerHTML = '<div class="err">请先粘贴小红书链接。</div>';
+    return;
+  }
+  const oldText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '探测中...';
+  resultEl.innerHTML = '<div class="success">正在调用所选接口并检测实际视频画质...</div>';
+  try {
+    const res = await apiFetch('/api/admin/video/xhs4k-probe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, provider })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || '探测失败');
+    const is4k = Math.min(data.width || 0, data.height || 0) >= 2160 || Math.max(data.width || 0, data.height || 0) >= 3840;
+    const rows = Array.isArray(data.candidate_diagnostics) ? data.candidate_diagnostics : [];
+    const row = rows[0] || {};
+    resultEl.innerHTML = `
+      <div class="${is4k ? 'success' : 'err'}">
+        <strong>${is4k ? '找到 4K 级别结果' : '未达到 4K'}</strong><br>
+        接口：${esc(data.provider_label || provider)}<br>
+        实际画质：${esc(data.quality || 'unknown')}<br>
+        编码：${esc(data.codec || '')}<br>
+        码率：${data.bitrate ? (data.bitrate / 1000 / 1000).toFixed(1) + 'Mbps' : '未知'}<br>
+        大小：${data.file_size ? (data.file_size / 1024 / 1024).toFixed(1) + 'MB' : '未知'}<br>
+        来源：${esc(data.quality_source || '')}<br>
+        主机：${esc(row.url_host || '')}<br>
+        计费来源：${esc(data.charges || '')}
+      </div>`;
+  } catch (e) {
+    resultEl.innerHTML = `<div class="err">${esc(e.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldText;
+  }
+}
+
+function showPasswordForm() {
+  document.getElementById('admin-result').innerHTML = `
+    <div class="card">
+      <h2>修改管理员密码</h2>
+      <label>当前密码</label>
+      <input id="admin-current-password" type="password" autocomplete="current-password" placeholder="请输入当前密码">
+      <label>新密码</label>
+      <input id="admin-new-password" type="password" autocomplete="new-password" placeholder="至少8位">
+      <label>确认新密码</label>
+      <input id="admin-confirm-password" type="password" autocomplete="new-password" placeholder="再次输入新密码">
+      <div id="admin-password-err" class="err hidden"></div>
+      <div id="admin-password-success" class="success hidden"></div>
+      <button class="btn" onclick="changeAdminPassword()">确认修改</button>
+    </div>`;
+}
+
+async function changeAdminPassword() {
+  const currentPassword = document.getElementById('admin-current-password').value;
+  const newPassword = document.getElementById('admin-new-password').value;
+  const confirmPassword = document.getElementById('admin-confirm-password').value;
+  const errEl = document.getElementById('admin-password-err');
+  const successEl = document.getElementById('admin-password-success');
+  errEl.classList.add('hidden');
+  successEl.classList.add('hidden');
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    errEl.textContent = '请填写当前密码和新密码';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (newPassword.length < 8) {
+    errEl.textContent = '新密码至少8位';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    errEl.textContent = '两次输入的新密码不一致';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  try {
+    const res = await apiFetch('/api/admin/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || '修改失败');
+    successEl.textContent = data.message || '密码已修改，请重新登录';
+    successEl.classList.remove('hidden');
+    currentToken = null;
+    localStorage.removeItem('token');
+    setTimeout(() => {
+      showAuthPage();
+      document.getElementById('login-username').value = currentUser ? currentUser.username : 'admin';
+      document.getElementById('login-password').value = '';
+    }, 1000);
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+// === localStorage ===
+function scopedStorageKey(name) {
+  const username = currentUser && currentUser.username ? currentUser.username : 'anonymous';
+  return `stepaudio_${username}_${name}`;
+}
+
+function getVoices() {
+  let localVoices = [];
+  try { localVoices = JSON.parse(localStorage.getItem(scopedStorageKey('voices')) || '[]'); } catch(e) { localVoices = []; }
+  const merged = [];
+  const seen = new Set();
+  [...serverVoices, ...localVoices].forEach(v => {
+    const key = v.step_voice_id || v.id;
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    merged.push(v);
+  });
+  return merged;
+}
+function saveVoices(v) {
+  try { localStorage.setItem(scopedStorageKey('voices'), JSON.stringify(v)); } catch(e) { console.error(e); }
+}
+function getJobs() {
+  try { return JSON.parse(localStorage.getItem(scopedStorageKey('jobs')) || '[]'); } catch(e) { return []; }
+}
+function saveJobs(j) {
+  try { localStorage.setItem(scopedStorageKey('jobs'), JSON.stringify(j)); } catch(e) { console.error(e); }
+}
+
+async function loadServerVoices() {
+  try {
+    const res = await apiFetch('/api/voices');
+    if (res.ok) serverVoices = await res.json();
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+// === 风格选择 ===
+let selectedStyle = '情绪高昂、积极向上、充满活力';
+function selectStyle(el) {
+  document.querySelectorAll('#style-tags .tag').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  selectedStyle = el.dataset.style;
+}
+function getInstruction() {
+  const custom = document.getElementById('s-custom-style').value.trim();
+  return custom || selectedStyle;
+}
+
+// === 进度条 ===
+function showProgress(type, text) {
+  const el = document.getElementById(type + '-progress');
+  el.classList.remove('hidden');
+  document.getElementById(type + '-progress-text').textContent = text;
+  document.getElementById(type + '-progress-pct').textContent = '0%';
+  document.getElementById(type + '-progress-bar').style.width = '0%';
+}
+function updateProgress(type, pct, text) {
+  document.getElementById(type + '-progress-pct').textContent = pct + '%';
+  document.getElementById(type + '-progress-bar').style.width = pct + '%';
+  if (text) document.getElementById(type + '-progress-text').textContent = text;
+}
+function hideProgress(type) {
+  document.getElementById(type + '-progress').classList.add('hidden');
+}
+
+function formatVideoMeta(t) {
+  const parts = [];
+  const modeMap = { original: '原视频接口', builtin: '自建解析', tikhub: 'TikHub付费', auto: '自动' };
+  if (t.download_mode) parts.push(`方式: ${modeMap[t.download_mode] || t.download_mode}`);
+  if (t.platform) parts.push(`平台: ${t.platform}`);
+  if (t.quality && t.quality !== 'unknown') parts.push(`画质: ${t.quality}`);
+  if (t.codec) parts.push(`编码: ${t.codec}`);
+  if (t.bitrate) parts.push(`码率: ${(t.bitrate / 1000 / 1000).toFixed(1)}Mbps`);
+  if (t.file_size) parts.push(`大小: ${(t.file_size / 1024 / 1024).toFixed(1)}MB`);
+  if (t.quality_source && t.quality_source.includes('shortcut_api')) {
+    parts.push('来源: 原画接口');
+  } else if (t.quality_source && t.quality_source.includes('tikhub')) {
+    parts.push(t.platform === 'xhs' ? '来源: TikHub详情接口' : '来源: TikHub原画');
+  } else if (t.quality_source && t.quality_source.includes('yt_dlp')) {
+    parts.push('来源: yt-dlp兜底');
+  } else if (t.quality_source && t.quality_source.includes('bit_rate')) {
+    parts.push('来源: 自建解析 bit_rate');
+  } else if (t.quality_source && ['douyin', 'xhs'].includes(t.platform)) {
+    parts.push('来源: 自建解析');
+  }
+  if (['douyin', 'xhs'].includes(t.platform)) {
+    parts.push(t.platform_cookie_configured ? '登录态: 已配置' : '登录态: 未配置');
+  }
+  if (t.shortcut_fallback_reason) parts.push('兜底: 已尝试原画接口');
+  return parts.join(' | ');
+}
+
+function renderCandidateDiagnostics(t) {
+  const rows = Array.isArray(t.candidate_diagnostics) ? t.candidate_diagnostics : [];
+  if (!rows.length) return '';
+  const count = t.candidate_count || rows.length;
+  return `
+    <details style="margin-top:8px;font-size:12px;color:#475569">
+      <summary style="cursor:pointer">候选流诊断（${count} 条，显示前 ${rows.length} 条）</summary>
+      <div style="margin-top:6px;overflow:auto">
+        <table style="width:100%;font-size:12px;border-collapse:collapse">
+          <tr style="text-align:left;color:#64748b">
+            <th>选中</th><th>来源</th><th>画质</th><th>编码</th><th>码率</th><th>主机</th>
+          </tr>
+          ${rows.map(r => `
+            <tr>
+              <td>${r.selected ? '是' : ''}</td>
+              <td>${esc(r.source || '')}</td>
+              <td>${esc(r.quality || '')}</td>
+              <td>${esc(r.codec || '')}</td>
+              <td>${r.bitrate ? (r.bitrate / 1000 / 1000).toFixed(1) + 'Mbps' : ''}</td>
+              <td>${esc(r.url_host || '')}</td>
+            </tr>`).join('')}
+        </table>
+      </div>
+    </details>`;
+}
+
+// === Tab 切换 ===
+function showTab(name) {
+  ['voices', 'new', 'speak', 'video', 'history'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
+  });
+  document.querySelectorAll('#app-page .tab').forEach(el => {
+    el.classList.toggle('active', el.textContent.includes(
+      name === 'voices' ? '声音库' : name === 'speak' ? '文案朗读' : name === 'video' ? '视频下载' : name === 'history' ? '任务记录' : '上传'
+    ));
+  });
+  if (name === 'voices') loadServerVoices().then(renderVoices);
+  if (name === 'speak') loadServerVoices().then(renderVoiceOptions);
+  if (name === 'video') loadVideoHistory();
+  if (name === 'history') renderHistory();
+}
+
+function esc(s) { if (!s) return ''; return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function jsString(s) {
+  return JSON.stringify(s || '')
+    .replace(/&/g, '\\u0026')
+    .replace(/</g, '\\u003C')
+    .replace(/>/g, '\\u003E')
+    .replace(/"/g, '&quot;');
+}
+
+// === 声音库 ===
+function qualityBadge(q) {
+  if (!q || !q.quality_level) return '';
+  const cls = q.quality_level === 'good' ? 'quality-good' : q.quality_level === 'ok' ? 'quality-ok' : 'quality-poor';
+  return `<span class="badge ${cls}">${esc(q.quality_level_text || '可用')} ${q.quality_score || ''}</span>`;
+}
+
+function cloneModeText(mode) {
+  return mode === 'hifi' ? '高保真' : '快速';
+}
+
+function referenceSourceText(source) {
+  if (source === 'manual') return '手填文稿';
+  if (source === 'asr') return '自动识别文稿';
+  return '未使用文稿';
+}
+
+function renderVoices() {
+  const voices = getVoices();
+  const el = document.getElementById('voice-list');
+  if (!voices.length) {
+    el.innerHTML = '<div class="card" style="text-align:center;color:#94a3b8">还没有声音，点击右上角上传</div>';
+    return;
+  }
+  el.innerHTML = voices.map(v => {
+    const q = v.clone_quality || {};
+    const warnings = (v.clone_warnings || []).filter(Boolean);
+    const referenceText = (v.reference_text || '').trim();
+    return `
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <div>
+            <strong style="font-size:16px">${esc(v.name)}</strong>
+            <span style="color:#94a3b8;font-size:13px;margin-left:8px">${esc(v.speaker || '')} · ${esc(v.language || 'ZH')}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+            <span class="badge badge-active">${cloneModeText(v.clone_mode)}</span>
+            ${qualityBadge(q)}
+            <button class="btn-del" onclick="deleteVoice('${v.id}')">删除</button>
+          </div>
+        </div>
+        <div style="color:#065f46;font-size:13px;margin-top:6px">✅ 克隆成功，去文案朗读使用</div>
+        <div class="voice-meta">
+          ${q.summary ? `<div>${esc(q.summary)}</div>` : ''}
+          ${q.original_duration ? `<div>原素材 ${q.original_duration}s，参考片段 ${q.processed_duration || ''}s，${referenceSourceText(v.reference_text_source)}</div>` : ''}
+          ${warnings.length ? `<div style="color:#92400e">提醒：${esc(warnings.slice(0, 2).join('；'))}</div>` : ''}
+          ${referenceText ? `<details style="margin-top:4px"><summary>查看参考文稿</summary><div style="white-space:pre-wrap;margin-top:4px">${esc(referenceText)}</div></details>` : ''}
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap">
+          ${v.has_sample ? `<button class="btn2" onclick="downloadVoiceSample('${v.id}', ${jsString(v.name)}, this)" style="background:#059669">下载样音</button>` : ''}
+          ${v.has_reference_audio ? `<button class="btn2" onclick="downloadVoiceReference('${v.id}', ${jsString(v.name)}, this)" style="background:#475569">下载参考片段</button>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function downloadVoiceSample(id, name, triggerBtn) {
+  const btn = triggerBtn;
+  const oldText = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '下载中...';
+  }
+  try {
+    const res = await apiFetch('/api/voices/' + id + '/sample');
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || '样音下载失败');
+    }
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = ((name || 'voice_sample').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 80) || 'voice_sample') + '.mp3';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(blobUrl);
+  } catch (e) {
+    alert(e.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = oldText || '下载样音';
+    }
+  }
+}
+
+async function downloadVoiceReference(id, name, triggerBtn) {
+  const btn = triggerBtn;
+  const oldText = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '下载中...';
+  }
+  try {
+    const res = await apiFetch('/api/voices/' + id + '/reference');
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || '参考片段下载失败');
+    }
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = ((name || 'voice_reference').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 80) || 'voice_reference') + '_参考片段.wav';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(blobUrl);
+  } catch (e) {
+    alert(e.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = oldText || '下载参考片段';
+    }
+  }
+}
+
+async function downloadTaskAudio(id, title, triggerBtn) {
+  if (!id) {
+    alert('音频任务不存在，请到任务记录里重新打开');
+    return;
+  }
+  const btn = triggerBtn;
+  const oldText = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '下载中...';
+  }
+  try {
+    const res = await apiFetch('/api/task/' + id + '/audio');
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || '音频下载失败');
+    }
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = ((title || 'tts_audio').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 80) || 'tts_audio') + '.mp3';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(blobUrl);
+  } catch (e) {
+    alert(e.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = oldText || '下载音频';
+    }
+  }
+}
+
+function renderVoiceOptions() {
+  const voices = getVoices();
+  const sel = document.getElementById('s-voice');
+  sel.innerHTML = '<option value="">请选择...</option>' +
+    voices.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join('');
+}
+
+// === 视频下载 ===
+function videoModeLabel(mode) {
+  return ({ original: '原视频接口', builtin: '自建解析', tikhub: 'TikHub付费' })[mode] || '视频下载';
+}
+
+function setVideoModeButtonsDisabled(disabled) {
+  document.querySelectorAll('.video-mode-btn').forEach(btn => { btn.disabled = disabled; });
+}
+
+async function downloadVideo(mode, triggerBtn) {
+  mode = mode || 'builtin';
+  const url = document.getElementById('video-url').value.trim();
+  const errEl = document.getElementById('video-err');
+  const progressEl = document.getElementById('video-progress');
+  const btn = triggerBtn;
+  const oldText = btn ? btn.textContent : '';
+  const modeLabel = videoModeLabel(mode);
+
+  errEl.classList.add('hidden');
+  if (!url) {
+    errEl.textContent = '请粘贴视频链接';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  setVideoModeButtonsDisabled(true);
+  if (btn) btn.textContent = '处理中...';
+  progressEl.classList.remove('hidden');
+  document.getElementById('video-progress-text').textContent = `${modeLabel}：正在解析链接...`;
+  document.getElementById('video-progress-pct').textContent = '0%';
+  document.getElementById('video-progress-bar').style.width = '0%';
+
+  try {
+    const res = await apiFetch('/api/video/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, download_mode: mode })
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.detail || '下载失败');
+    }
+
+    const { task_id } = await res.json();
+    document.getElementById('video-progress-text').textContent = `${modeLabel}：下载队列中...`;
+
+    // 轮询任务状态（最多 5 分钟）
+    const start = Date.now();
+    let pct = 0;
+    while (Date.now() - start < 300000) {
+      await new Promise(r => setTimeout(r, 1200));
+      pct = Math.min(95, pct + 8);
+      document.getElementById('video-progress-pct').textContent = pct + '%';
+      document.getElementById('video-progress-bar').style.width = pct + '%';
+      document.getElementById('video-progress-text').textContent = pct < 35 ? `${modeLabel}：正在获取地址...` : pct < 70 ? `${modeLabel}：正在下载...` : `${modeLabel}：正在写入文件...`;
+
+      const taskRes = await apiFetch('/api/video/task/' + task_id);
+      if (taskRes.ok) {
+        const task = await taskRes.json();
+        if (task.status === 'queued') {
+          document.getElementById('video-progress-text').textContent = `${modeLabel}：下载队列中...`;
+          continue;
+        }
+        if (task.status === 'processing') {
+          document.getElementById('video-progress-text').textContent = pct < 50 ? `${modeLabel}：正在获取地址...` : `${modeLabel}：正在下载...`;
+        }
+        if (task.status === 'retrying') {
+          const attempt = task.attempt || 1;
+          const lastError = task.last_error ? `：${task.last_error}` : '';
+          document.getElementById('video-progress-text').textContent = `下载失败，正在重试第 ${attempt + 1} 次${lastError}`;
+          continue;
+        }
+        if (task.status === 'done') {
+          document.getElementById('video-progress-pct').textContent = '100%';
+          document.getElementById('video-progress-bar').style.width = '100%';
+          document.getElementById('video-progress-text').textContent = '完成！';
+
+          // 显示结果
+          document.getElementById('video-result-title').textContent = task.title || '下载完成';
+          document.getElementById('video-result-desc').textContent = task.description || '点击"解析文案"识别视频中的语音';
+          document.getElementById('video-result-info').textContent = formatVideoMeta(task);
+          document.getElementById('video-result').classList.remove('hidden');
+          document.getElementById('video-download-btn').setAttribute('data-task-id', task_id);
+          document.getElementById('video-asr-btn').setAttribute('data-task-id', task_id);
+
+          loadUserInfo(); // 刷新积分
+          loadVideoHistory(); // 刷新历史
+          return;
+        }
+        if (task.status === 'error') {
+          throw new Error(task.error || '下载失败');
+        }
+      }
+    }
+
+    throw new Error('下载超时，请重试');
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  } finally {
+    setVideoModeButtonsDisabled(false);
+    if (btn) btn.textContent = oldText || `${modeLabel}（扣 1 积分）`;
+    setTimeout(() => progressEl.classList.add('hidden'), 1000);
+  }
+}
+
+async function downloadVideoFile(taskId, triggerBtn) {
+  const btn = triggerBtn || document.getElementById('video-download-btn');
+  taskId = taskId || btn.getAttribute('data-task-id');
+  if (!taskId) return;
+
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '下载中...';
+
+  try {
+    const res = await apiFetch('/api/video/download-file/' + taskId);
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.detail || '下载失败');
+    }
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    document.body.removeChild(a);
+  } catch (e) {
+    alert(e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText || '下载到本地';
+  }
+}
+
+async function deleteVideoRecord(taskId) {
+  if (!taskId) return;
+  if (!confirm('确定删除这条下载记录？本地已保存的视频文件也会一起删除。')) return;
+  try {
+    const res = await apiFetch('/api/video/task/' + taskId, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || '删除失败');
+    const resultBtn = document.getElementById('video-download-btn');
+    if (resultBtn && resultBtn.getAttribute('data-task-id') === taskId) {
+      document.getElementById('video-result').classList.add('hidden');
+    }
+    loadVideoHistory();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+function useForTTS() {
+  const desc = document.getElementById('video-result-desc').textContent;
+  if (!desc) {
+    alert('没有识别到文案');
+    return;
+  }
+  // 切换到文案朗读标签
+  showTab('speak');
+  // 填充文案
+  document.getElementById('s-text').value = desc;
+}
+
+async function transcribeVideo(taskId, triggerBtn) {
+  const btn = triggerBtn || document.getElementById('video-asr-btn');
+  taskId = taskId || btn.getAttribute('data-task-id');
+  if (!taskId) {
+    alert('请先下载视频');
+    return;
+  }
+
+  const infoEl = document.getElementById('video-result-info');
+  const originalInfo = infoEl.textContent;
+  const resultAsrBtn = document.getElementById('video-asr-btn');
+  const isCurrentResult = resultAsrBtn && resultAsrBtn.getAttribute('data-task-id') === taskId;
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'StepAudio 解析中...';
+  if (isCurrentResult) infoEl.textContent = originalInfo + ' | 文案解析中...';
+
+  try {
+    const res = await apiFetch('/api/video/transcribe/' + taskId, { method: 'POST' });
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.detail || '解析失败');
+    }
+
+    if (data.text && data.text.trim()) {
+      if (isCurrentResult) {
+        document.getElementById('video-result-desc').textContent = data.text;
+        infoEl.textContent = originalInfo + ' | 文案: 已解析';
+      }
+      loadVideoHistory();
+      alert('文案解析成功！');
+    } else {
+      if (isCurrentResult) infoEl.textContent = originalInfo + ' | 文案: 未识别到语音';
+      alert('未识别到文案内容，可能视频没有语音或语音不清晰');
+    }
+  } catch (e) {
+    if (isCurrentResult) infoEl.textContent = originalInfo;
+    alert('解析失败: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText || '解析文案';
+  }
+}
+
+async function loadVideoHistory() {
+  const el = document.getElementById('video-history-list');
+  try {
+    const isAdmin = currentUser && currentUser.is_admin;
+    const endpoint = isAdmin ? '/api/video/admin/all-tasks' : '/api/video/my-tasks';
+    const res = await apiFetch(endpoint);
+    if (!res.ok) {
+      el.innerHTML = '<div class="card" style="text-align:center;color:#94a3b8">加载失败</div>';
+      return;
+    }
+    const tasks = await res.json();
+    if (!tasks.length) {
+      el.innerHTML = '<div class="card" style="text-align:center;color:#94a3b8">暂无下载记录</div>';
+      return;
+    }
+    el.innerHTML = tasks.map(t => `
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+          <div>
+            <strong>${esc(t.title || '下载中...')}</strong>
+            <span style="color:#94a3b8;font-size:12px;margin-left:8px">${esc(t.platform)}</span>
+            ${isAdmin ? `<span style="color:#94a3b8;font-size:12px;margin-left:8px">用户: ${esc(t.username || '未知')}</span>` : ''}
+          </div>
+          <span style="color:#94a3b8;font-size:12px;white-space:nowrap">${new Date(t.created_at).toLocaleString('zh-CN')}</span>
+        </div>
+        ${t.description ? `<div style="font-size:13px;color:#64748b;margin-top:6px">${esc(t.description.slice(0, 100))}${t.description.length > 100 ? '...' : ''}</div>` : ''}
+        ${t.status === 'queued' ? '<div style="color:#92400e;font-size:12px;margin-top:4px">下载队列中...</div>' : ''}
+        ${t.status === 'processing' ? '<div style="color:#92400e;font-size:12px;margin-top:4px">下载中...</div>' : ''}
+        ${t.status === 'retrying' ? `<div style="color:#92400e;font-size:12px;margin-top:4px">下载失败，正在重试第 ${(t.attempt || 1) + 1} 次${t.last_error ? '：' + esc(t.last_error) : ''}</div>` : ''}
+        ${t.status === 'error' ? `<div style="color:#991b1b;font-size:12px;margin-top:4px">错误: ${esc(t.error || '未知错误')}</div>` : ''}
+        ${t.status === 'done' && t.file_size ? `<div style="font-size:12px;color:#065f46;margin-top:4px">✅ ${esc(formatVideoMeta(t))}</div>` : ''}
+        ${t.shortcut_fallback_reason ? `<div style="color:#92400e;font-size:12px;margin-top:4px">${esc(t.shortcut_fallback_reason)}</div>` : ''}
+        ${isAdmin ? renderCandidateDiagnostics(t) : ''}
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          ${t.status === 'done' && t.file_size ? `<button class="btn2" onclick="downloadVideoFile('${t.id}', this)" style="background:#059669">下载视频</button>` : ''}
+          ${t.status === 'done' && t.file_size ? `<button class="btn2" onclick="transcribeVideo('${t.id}', this)" style="background:#8b5cf6">解析文案</button>` : ''}
+          ${t.status !== 'processing' ? `<button class="btn-del" onclick="deleteVideoRecord('${t.id}')">删除记录</button>` : ''}
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    el.innerHTML = '<div class="card" style="text-align:center;color:#94a3b8">加载失败</div>';
+  }
+}
+
+// === 任务记录 ===
+async function renderHistory() {
+  const el = document.getElementById('history-list');
+  try {
+    const isAdmin = currentUser && currentUser.is_admin;
+    const endpoint = isAdmin ? '/api/admin/all-tasks' : '/api/my-tasks';
+    const res = await apiFetch(endpoint);
+    if (!res.ok) {
+      el.innerHTML = '<div class="card" style="text-align:center;color:#94a3b8">加载失败</div>';
+      return;
+    }
+    const tasks = await res.json();
+    if (!tasks.length) {
+      el.innerHTML = '<div class="card" style="text-align:center;color:#94a3b8">暂无记录</div>';
+      return;
+    }
+    el.innerHTML = tasks.map(t => `
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <strong>${esc(t.type === 'clone' ? '声音克隆' : '文案朗读')}</strong>
+            ${isAdmin ? `<span style="color:#94a3b8;font-size:12px;margin-left:8px">用户: ${esc(t.username || '未知')}</span>` : ''}
+          </div>
+          <div style="display:flex;align-items:center">
+            <span style="color:#94a3b8;font-size:12px">${new Date(t.created_at).toLocaleString('zh-CN')}</span>
+          </div>
+        </div>
+        ${t.text ? `<div style="font-size:13px;color:#64748b;margin-top:6px">${esc(t.text)}</div>` : ''}
+        ${t.status === 'processing' ? '<div style="color:#92400e;font-size:12px;margin-top:4px">处理中...</div>' : ''}
+        ${t.status === 'error' ? `<div style="color:#991b1b;font-size:12px;margin-top:4px">错误: ${esc(t.error || '未知错误')}</div>` : ''}
+        ${t.status === 'done' && t.audio ? `
+          <audio controls src="data:audio/mpeg;base64,${t.audio}" style="margin-top:10px"></audio>
+          <button class="btn2" onclick="downloadTaskAudio('${t.id}', ${jsString(t.text || 'tts_audio')}, this)" style="background:#059669;margin-top:8px">下载音频</button>
+        ` : ''}
+        ${t.status === 'done' && t.sample_audio ? `
+          <div style="color:#065f46;font-size:12px;margin-top:4px">✅ 克隆成功</div>
+          <button class="btn2" onclick="downloadVoiceSample('${t.id}', ${jsString(t.voice_name || 'voice_sample')}, this)" style="background:#059669;margin-top:8px">下载样音</button>
+        ` : ''}
+      </div>
+    `).join('');
+  } catch (e) {
+    el.innerHTML = '<div class="card" style="text-align:center;color:#94a3b8">加载失败</div>';
+  }
+}
+
+// === 轮询 ===
+async function pollTask(taskId, progressType, maxWait = 120000) {
+  const start = Date.now();
+  let pct = 0;
+  while (Date.now() - start < maxWait) {
+    await new Promise(r => setTimeout(r, 2000));
+    pct = Math.min(90, pct + 10);
+    updateProgress(progressType, pct, pct < 30 ? '正在处理...' : pct < 60 ? '生成中...' : '即将完成...');
+    const res = await apiFetch('/api/task/' + taskId);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === 'done') {
+        updateProgress(progressType, 100, '完成！');
+        loadUserInfo(); // 刷新积分
+        return data;
+      }
+      if (data.status === 'error') throw new Error(data.error);
+    }
+  }
+  throw new Error('请求超时，请重试');
+}
+
+// === 视频提取音频 ===
+async function extractAudioFromVideo(videoFile) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.src = URL.createObjectURL(videoFile);
+    video.muted = true;
+    video.style.display = 'none';
+    document.body.appendChild(video);  // 添加到 DOM
+
+    video.onloadedmetadata = async () => {
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaElementSource(video);
+        const processor = audioContext.createScriptProcessor(4096, 1, 1);
+        source.connect(processor);
+        processor.connect(audioContext.destination);
+        const audioChunks = [];
+        processor.onaudioprocess = (e) => {
+          audioChunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+        };
+        video.play();
+        video.onended = () => {
+          processor.disconnect();
+          source.disconnect();
+          audioContext.close();
+          document.body.removeChild(video);  // 移除 video 元素
+          const totalLength = audioChunks.reduce((acc, chunk) => acc + chunk.length, 0);
+          const audioData = new Float32Array(totalLength);
+          let offset = 0;
+          for (const chunk of audioChunks) { audioData.set(chunk, offset); offset += chunk.length; }
+          const wavBlob = convertToWav(audioData, audioContext.sampleRate);
+          resolve(new File([wavBlob], videoFile.name.replace(/\.[^.]+$/, '.wav'), { type: 'audio/wav' }));
+          URL.revokeObjectURL(video.src);
+        };
+        setTimeout(() => {
+          if (!video.ended) {
+            video.pause();
+            document.body.removeChild(video);
+            reject(new Error('视频处理超时'));
+          }
+        }, 60000);
+      } catch(e) {
+        document.body.removeChild(video);
+        reject(e);
+      }
+    };
+    video.onerror = () => {
+      document.body.removeChild(video);
+      reject(new Error('无法读取视频文件'));
+    };
+  });
+}
+
+function convertToWav(audioData, sampleRate) {
+  const buffer = new ArrayBuffer(44 + audioData.length * 2);
+  const view = new DataView(buffer);
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, 36 + audioData.length * 2, true);
+  writeString(view, 8, 'WAVE');
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(view, 36, 'data');
+  view.setUint32(40, audioData.length * 2, true);
+  let offset = 44;
+  for (let i = 0; i < audioData.length; i++) {
+    view.setInt16(offset, Math.max(-1, Math.min(1, audioData[i])) * 0x7FFF, true);
+    offset += 2;
+  }
+  return new Blob([buffer], { type: 'audio/wav' });
+}
+function writeString(view, offset, string) {
+  for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
+}
+
+function selectCloneMode(btn) {
+  document.querySelectorAll('#clone-mode-tabs button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const mode = btn.dataset.mode || 'fast';
+  document.getElementById('v-clone-mode').value = mode;
+  const hint = document.getElementById('clone-mode-hint');
+  hint.textContent = mode === 'hifi'
+    ? '适合老板声、主播声等长期复用声音；系统会优先使用参考文稿提升稳定性。'
+    : '适合普通素材，系统会自动清理音频并选择最佳片段。';
+  if (mode === 'hifi') document.getElementById('v-auto-transcribe').checked = true;
+}
+
+// === 上传克隆 ===
+async function uploadVoice() {
+  const name = document.getElementById('v-name').value.trim();
+  let file = document.getElementById('v-file').files[0];
+  const consent = document.getElementById('v-consent').checked;
+  const errEl = document.getElementById('v-err');
+  errEl.classList.add('hidden');
+  if (!name || !file || !consent) {
+    errEl.textContent = '请填写名称、选择文件并勾选授权';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  if (file.type.startsWith('video/')) {
+    showProgress('v', '正在从视频提取音频...');
+    try {
+      file = await extractAudioFromVideo(file);
+      updateProgress('v', 20, '音频提取完成');
+    } catch (e) {
+      errEl.textContent = '视频音频提取失败: ' + e.message;
+      errEl.classList.remove('hidden');
+      return;
+    }
+  }
+
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('name', name);
+  fd.append('speaker', document.getElementById('v-speaker').value.trim());
+  fd.append('department', document.getElementById('v-dept').value.trim());
+  fd.append('sample_text', document.getElementById('v-sample-text').value.trim());
+  fd.append('clone_mode', document.getElementById('v-clone-mode').value);
+  fd.append('auto_transcribe', document.getElementById('v-auto-transcribe').checked ? 'true' : 'false');
+  const btn = document.getElementById('v-btn');
+  btn.disabled = true;
+  btn.textContent = '处理中...';
+  showProgress('v', '正在上传文件...');
+
+  try {
+    updateProgress('v', 10, '正在上传...');
+    const res = await apiFetch('/api/clone', { method: 'POST', body: fd });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.detail || '上传失败');
+    }
+    const { task_id } = await res.json();
+    updateProgress('v', 20, '正在克隆音色...');
+    const result = await pollTask(task_id, 'v');
+
+    const voices = getVoices();
+    voices.unshift({
+      id: result.id || task_id,
+      name, speaker: document.getElementById('v-speaker').value,
+      department: document.getElementById('v-dept').value, language: 'ZH',
+      step_voice_id: result.step_voice_id, has_sample: true,
+      has_reference_audio: Boolean(result.processed_reference_audio),
+      clone_mode: result.clone_mode,
+      reference_text: result.reference_text,
+      reference_text_source: result.reference_text_source,
+      clone_quality: result.clone_quality,
+      clone_warnings: result.clone_warnings || [],
+      created_at: new Date().toISOString(),
+    });
+    saveVoices(voices);
+    setTimeout(() => showTab('voices'), 500);
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '开始克隆（扣 1 积分）';
+    setTimeout(() => hideProgress('v'), 1000);
+  }
+}
+
+// === 文案朗读 ===
+async function createTTS() {
+  const voiceId = document.getElementById('s-voice').value;
+  const text = document.getElementById('s-text').value.trim();
+  const errEl = document.getElementById('s-err');
+  errEl.classList.add('hidden');
+  if (!voiceId || !text) {
+    errEl.textContent = '请选择声音并输入文案';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  const voices = getVoices();
+  const voice = voices.find(v => v.id === voiceId);
+  if (!voice) {
+    errEl.textContent = '声音不存在';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  const btn = document.getElementById('s-btn');
+  btn.disabled = true;
+  btn.textContent = '处理中...';
+  showProgress('s', '正在生成语音...');
+
+  try {
+    const instruction = getInstruction();
+    const res = await apiFetch('/api/tts', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ step_voice_id: voice.step_voice_id, text, instruction })
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.detail || '生成失败');
+    }
+    const { task_id } = await res.json();
+    const result = await pollTask(task_id, 's');
+    const title = document.getElementById('s-title').value || '未命名';
+
+    const jobs = getJobs();
+    jobs.unshift({
+      id: task_id,
+      title,
+      voice_name: voice.name, text: text.slice(0, 80), style: instruction,
+      audio: result.audio,
+      created_at: new Date().toISOString(),
+    });
+    let audioCount = 0;
+    jobs.forEach((j, i) => { if (j.audio) { audioCount++; if (audioCount > 5) delete j.audio; } });
+    if (jobs.length > 20) jobs.length = 20;
+    saveJobs(jobs);
+
+    const audioEl = document.getElementById('tts-audio');
+    audioEl.src = 'data:audio/mpeg;base64,' + result.audio;
+    const downloadBtn = document.getElementById('tts-download-btn');
+    downloadBtn.dataset.taskId = task_id;
+    downloadBtn.dataset.title = title;
+    const meta = result.tts_meta || {};
+    const metaText = meta.segment_count > 1
+      ? `已自动分 ${meta.segment_count} 段生成并合并，时长 ${meta.duration_seconds || '-'} 秒`
+      : `已完成质量检查，时长 ${meta.duration_seconds || '-'} 秒`;
+    document.getElementById('tts-meta').textContent = metaText;
+    document.getElementById('tts-result').classList.remove('hidden');
+    audioEl.play();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '生成语音（扣 1 积分）';
+    setTimeout(() => hideProgress('s'), 1000);
+  }
+}
+
+// === 删除 ===
+function deleteVoice(id) {
+  if (!confirm('确定删除该声音？')) return;
+  saveVoices(getVoices().filter(v => v.id !== id));
+  renderVoices();
+}
+function deleteJob(id) {
+  if (!confirm('确定删除该记录？')) return;
+  saveJobs(getJobs().filter(j => j.id !== id));
+  renderHistory();
+}
+
+// === 初始化 ===
+if (currentToken) {
+  showAppPage();
+} else {
+  showAuthPage();
+}
+</script>
+</body>
+</html>

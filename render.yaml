@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: stepaudio-voice-studio
+    runtime: docker
+    plan: free
+    envVars:
+      - key: APP_ENV
+        value: "production"
+      - key: DATABASE_URL
+        sync: false
+      - key: LOCAL_STORAGE_DIR
+        sync: false
+      - key: STEP_API_KEY
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: STEP_API_BASE
+        value: "https://api.stepfun.com/step_plan/v1"
+      - key: STEP_FILE_API_BASE
+        value: "https://api.stepfun.com/v1"
+      - key: STEP_ASR_MODEL
+        value: "stepaudio-2.5-asr"
+      - key: STEP_TTS_MODEL
+        value: "stepaudio-2.5-tts"
